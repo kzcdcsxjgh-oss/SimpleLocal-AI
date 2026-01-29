@@ -12,6 +12,7 @@ export interface VectorDocument {
   chunkIndex: number;
   vector: number[];
   addedAt: string;
+  [key: string]: unknown;
 }
 
 export interface IndexedDocument {
