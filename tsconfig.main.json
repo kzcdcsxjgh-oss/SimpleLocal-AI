@@ -10,9 +10,9 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "dist/main",
-    "rootDir": "src/main",
+    "rootDir": "src",
     "declaration": false
   },
   "include": ["src/main/**/*", "src/shared/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/renderer"]
 }
