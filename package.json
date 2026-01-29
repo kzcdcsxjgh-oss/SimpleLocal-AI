@@ -1,6 +1,6 @@
 {
   "name": "simplelocal-ai",
-  "version": "1.0.0",
+  "version": "1.0.7",
   "description": "A local desktop application for chatting with documents - 100% offline, 100% private",
   "main": "dist/main/index.js",
   "author": "SimpleLocal AI Team",
@@ -51,23 +51,14 @@
       "dist/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "resources",
-        "to": "resources"
-      }
-    ],
     "win": {
-      "target": ["nsis"],
-      "icon": "resources/icon.ico"
+      "target": ["nsis"]
     },
     "mac": {
-      "target": ["dmg"],
-      "icon": "resources/icon.icns"
+      "target": ["dmg"]
     },
     "linux": {
-      "target": ["AppImage"],
-      "icon": "resources/icon.png"
+      "target": ["AppImage"]
     }
   }
 }
