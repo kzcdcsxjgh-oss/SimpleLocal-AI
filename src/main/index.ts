@@ -2,14 +2,12 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { DocumentProcessor } from './services/documentProcessor';
 import { VectorStore } from './services/vectorStore';
-import { RAGPipeline } from './services/ragPipeline';
-import { OllamaService } from './services/ollamaService';
+import { LocalAIService } from './services/localAIService';
 
 let mainWindow: BrowserWindow | null = null;
 let documentProcessor: DocumentProcessor;
 let vectorStore: VectorStore;
-let ragPipeline: RAGPipeline;
-let ollamaService: OllamaService;
+let localAI: LocalAIService;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -49,30 +47,39 @@ async function initializeServices() {
   const dataDir = path.join(userDataPath, 'simplelocal-data');
 
   // Initialize services
-  ollamaService = new OllamaService();
   vectorStore = new VectorStore(dataDir);
   documentProcessor = new DocumentProcessor();
-  ragPipeline = new RAGPipeline(vectorStore, ollamaService);
+  localAI = new LocalAIService();
+
+  // Set up progress callback for AI initialization
+  localAI.onProgress((status) => {
+    mainWindow?.webContents.send('ai:status', status);
+  });
 
   await vectorStore.initialize();
+
+  // Start AI initialization in background (don't block app start)
+  localAI.initialize().catch((error) => {
+    console.error('Failed to initialize AI:', error);
+  });
 }
 
 // IPC Handlers
 function setupIpcHandlers() {
-  // Check if Ollama is available
-  ipcMain.handle('ollama:check', async () => {
-    return await ollamaService.checkConnection();
+  // Check AI status
+  ipcMain.handle('ai:check', async () => {
+    return localAI.getStatus();
   });
 
-  // Get available models
-  ipcMain.handle('ollama:models', async () => {
-    return await ollamaService.getAvailableModels();
-  });
-
-  // Set the active model
-  ipcMain.handle('ollama:setModel', async (_event, modelName: string) => {
-    ollamaService.setModel(modelName);
-    return { success: true };
+  // Manually trigger AI initialization
+  ipcMain.handle('ai:initialize', async () => {
+    try {
+      await localAI.initialize();
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: errorMessage };
+    }
   });
 
   // Open file dialog for document selection
@@ -99,8 +106,21 @@ function setupIpcHandlers() {
       // Process the document into chunks
       const chunks = await documentProcessor.processDocument(filePath);
 
-      // Generate embeddings and store in vector database
-      await ragPipeline.indexDocument(filePath, chunks);
+      // Generate embeddings for each chunk
+      const documentsWithEmbeddings = [];
+      for (const chunk of chunks) {
+        const embedding = await localAI.generateEmbedding(chunk.content);
+        documentsWithEmbeddings.push({
+          content: chunk.content,
+          documentPath: chunk.metadata.documentPath,
+          documentName: chunk.metadata.documentName,
+          chunkIndex: chunk.metadata.chunkIndex,
+          embedding,
+        });
+      }
+
+      // Store in vector database
+      await vectorStore.addDocuments(documentsWithEmbeddings);
 
       mainWindow?.webContents.send('document:processing', { filePath, status: 'completed' });
 
@@ -127,39 +147,48 @@ function setupIpcHandlers() {
     return { success: true };
   });
 
-  // Chat with documents using RAG
+  // Chat with documents
   ipcMain.handle('chat:send', async (_event, message: string) => {
     try {
-      // Stream the response
-      const responseStream = ragPipeline.chat(message);
-      let fullResponse = '';
+      // Generate embedding for the query
+      const queryEmbedding = await localAI.generateEmbedding(message);
 
-      for await (const chunk of responseStream) {
-        fullResponse += chunk;
-        mainWindow?.webContents.send('chat:stream', { chunk, done: false });
+      // Search for relevant document chunks
+      const relevantChunks = await vectorStore.search(queryEmbedding, 5);
+
+      // Build context from relevant chunks
+      let context = '';
+      if (relevantChunks.length > 0) {
+        context = relevantChunks
+          .map((chunk, i) => `[From: ${chunk.documentName}]\n${chunk.content}`)
+          .join('\n\n---\n\n');
       }
 
-      mainWindow?.webContents.send('chat:stream', { chunk: '', done: true });
+      // Generate response
+      const response = await localAI.generate(message, context, (chunk) => {
+        mainWindow?.webContents.send('chat:stream', { chunk, done: false });
+      });
 
-      return { success: true, response: fullResponse };
+      mainWindow?.webContents.send('chat:stream', { chunk: response, done: true });
+
+      return { success: true, response };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMessage };
     }
   });
 
-  // Clear chat history
+  // Clear chat history (for future implementation)
   ipcMain.handle('chat:clear', async () => {
-    ragPipeline.clearHistory();
     return { success: true };
   });
 }
 
 // App lifecycle
 app.whenReady().then(async () => {
-  await initializeServices();
   setupIpcHandlers();
   await createWindow();
+  await initializeServices();
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {

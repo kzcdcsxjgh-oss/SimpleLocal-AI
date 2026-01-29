@@ -8,28 +8,29 @@
 
 ## 🌟 What is SimpleLocal AI?
 
-SimpleLocal AI is a free, open-source desktop application that lets you chat with your documents (PDFs, Word docs, text files) using AI—**100% locally on your computer**. No internet required. No subscriptions. No data collection.
+SimpleLocal AI is a free, open-source desktop application that lets you chat with your documents (PDFs, Word docs, text files) using AI—**100% locally on your computer**. No internet required after setup. No subscriptions. No data collection.
+
+**Just double-click and go.** The AI downloads automatically on first run.
 
 ## ✨ Features
 
 - **🔒 100% Private**: All processing happens on YOUR computer. Your documents never leave your device.
 - **💰 Forever Free**: No subscriptions, no API costs, no hidden fees.
-- **👵 Senior-Friendly**: Large text, high contrast, simple interface.
+- **👵 Senior-Friendly**: Large text, high contrast, simple interface. Passes the "Grandma Test".
 - **📄 Multiple Formats**: Supports PDF, DOCX, TXT, and Markdown files.
 - **🧠 Smart Search**: Uses RAG (Retrieval-Augmented Generation) to find relevant information.
+- **🚀 One-Click Install**: No Terminal, no Python, no Docker. Just a simple installer.
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### For Users (Easy Way)
 
-1. **Install Ollama** (Required for AI features)
-   - Visit [ollama.ai](https://ollama.ai) and download the installer
-   - After installation, run: `ollama pull llama3.2` (or another model of your choice)
+1. **Download** the installer for your system from the Releases page
+2. **Install** by double-clicking the downloaded file
+3. **Run** SimpleLocal AI - on first launch, it will automatically download the AI (one-time, requires internet)
+4. **Done!** Start adding documents and chatting
 
-2. **Node.js 18+** (For development)
-   - Visit [nodejs.org](https://nodejs.org) to download
-
-### Installation
+### For Developers
 
 ```bash
 # Clone the repository
@@ -50,9 +51,9 @@ npm run dev
 npm run package
 
 # Or build for specific platforms
-npm run package:win    # Windows
-npm run package:mac    # macOS
-npm run package:linux  # Linux
+npm run package:win    # Windows (.exe)
+npm run package:mac    # macOS (.dmg)
+npm run package:linux  # Linux (.AppImage)
 ```
 
 ## 🏗️ Project Structure
@@ -66,12 +67,14 @@ SimpleLocal-AI/
 │   │   └── services/         # Backend services
 │   │       ├── documentProcessor.ts  # PDF/DOCX parsing
 │   │       ├── vectorStore.ts        # LanceDB integration
-│   │       ├── ollamaService.ts      # Local LLM communication
-│   │       └── ragPipeline.ts        # RAG orchestration
+│   │       └── localAIService.ts     # Bundled AI (Transformers.js)
 │   │
 │   ├── renderer/             # React frontend
 │   │   ├── App.tsx           # Main application
 │   │   ├── components/       # UI components
+│   │   │   ├── ChatArea.tsx
+│   │   │   ├── DocumentList.tsx
+│   │   │   └── SetupScreen.tsx  # First-run setup
 │   │   └── styles.css        # Senior-friendly styling
 │   │
 │   └── shared/               # Shared types
@@ -89,17 +92,19 @@ SimpleLocal-AI/
 |-------|------------|---------|
 | Desktop | Electron | Cross-platform desktop app |
 | Frontend | React + TypeScript | User interface |
-| AI Engine | Ollama | Local LLM inference |
+| AI Engine | Transformers.js | Bundled local AI (no external setup!) |
 | Vector DB | LanceDB | Local document embeddings |
 | Document Processing | pdf-parse, mammoth | PDF and DOCX parsing |
 
 ## 📖 How It Works
 
-1. **Add Documents**: Click "Add Document" to select PDFs, Word docs, or text files.
+1. **First Run**: The app downloads a small AI model (~500MB) automatically. This only happens once.
 
-2. **Processing**: The app extracts text, splits it into chunks, and creates searchable embeddings.
+2. **Add Documents**: Click the big "Add Document" button to select PDFs, Word docs, or text files.
 
-3. **Chat**: Ask questions in natural language. The AI searches your documents and provides answers based on their content.
+3. **Processing**: The app reads your documents and creates searchable embeddings locally.
+
+4. **Chat**: Ask questions in natural language. The AI searches your documents and answers based on their content.
 
 ```
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
@@ -108,13 +113,18 @@ SimpleLocal-AI/
                                               │
                                               ▼
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Answer    │◀───│   Ollama     │◀───│   LanceDB   │
+│   Answer    │◀───│  Local AI    │◀───│   LanceDB   │
 └─────────────┘    └──────────────┘    └─────────────┘
 ```
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our contributing guidelines for more information.
+We welcome contributions! We especially need help with:
+
+1. **UX/UI Design**: Making complex AI feel invisible
+2. **Optimization**: Making models run fast on older laptops
+3. **Packaging**: Creating seamless installers for all platforms
+4. **Testing**: Ensuring the "Grandma Test" passes
 
 ### Development Tips
 
@@ -128,7 +138,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
-- [Ollama](https://ollama.ai) for making local LLMs accessible
+- [Transformers.js](https://huggingface.co/docs/transformers.js) for making AI run in JavaScript
 - [LanceDB](https://lancedb.com) for the embedded vector database
 - [Electron](https://electronjs.org) for cross-platform desktop support
 

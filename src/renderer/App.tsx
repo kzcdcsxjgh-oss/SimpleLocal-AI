@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DocumentList from './components/DocumentList';
 import ChatArea from './components/ChatArea';
+import SetupScreen from './components/SetupScreen';
 
 interface Document {
   id: string;
@@ -16,20 +17,31 @@ interface Message {
   content: string;
 }
 
+interface AIStatus {
+  ready: boolean;
+  loading: boolean;
+  progress: number;
+  error?: string;
+}
+
 const App: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isOllamaOnline, setIsOllamaOnline] = useState<boolean>(false);
+  const [aiStatus, setAIStatus] = useState<AIStatus>({
+    ready: false,
+    loading: true,
+    progress: 0,
+  });
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [processingFile, setProcessingFile] = useState<string | null>(null);
 
-  // Check Ollama status and load documents on mount
+  // Initialize and check AI status on mount
   useEffect(() => {
     const initialize = async () => {
-      // Check Ollama status
-      const status = await window.electronAPI.checkOllama();
-      setIsOllamaOnline(status.available);
+      // Check AI status
+      const status = await window.electronAPI.checkAI();
+      setAIStatus(status);
 
       // Load existing documents
       const docs = await window.electronAPI.listDocuments();
@@ -39,6 +51,10 @@ const App: React.FC = () => {
     initialize();
 
     // Set up event listeners
+    const unsubscribeAI = window.electronAPI.onAIStatus((status) => {
+      setAIStatus(status);
+    });
+
     const unsubscribeProcessing = window.electronAPI.onDocumentProcessing((data) => {
       if (data.status === 'started') {
         setProcessingFile(data.filePath);
@@ -50,6 +66,7 @@ const App: React.FC = () => {
     });
 
     return () => {
+      unsubscribeAI();
       unsubscribeProcessing();
     };
   }, []);
@@ -103,7 +120,7 @@ const App: React.FC = () => {
 
     // Set up streaming listener
     const unsubscribe = window.electronAPI.onChatStream((data) => {
-      if (data.chunk) {
+      if (data.chunk && !data.done) {
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessage.id
@@ -113,6 +130,14 @@ const App: React.FC = () => {
         );
       }
       if (data.done) {
+        // Set the final response
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessage.id
+              ? { ...msg, content: data.chunk || msg.content }
+              : msg
+          )
+        );
         setIsLoading(false);
       }
     });
@@ -129,8 +154,8 @@ const App: React.FC = () => {
             : msg
         )
       );
-    } finally {
       setIsLoading(false);
+    } finally {
       unsubscribe();
     }
   }, [isLoading]);
@@ -141,6 +166,11 @@ const App: React.FC = () => {
     setMessages([]);
   }, []);
 
+  // Show setup screen while AI is loading for the first time
+  if (aiStatus.loading && !aiStatus.ready) {
+    return <SetupScreen progress={aiStatus.progress} error={aiStatus.error} />;
+  }
+
   return (
     <div className="app">
       {/* Header */}
@@ -149,17 +179,16 @@ const App: React.FC = () => {
           <h1 className="header__title">SimpleLocal AI</h1>
           <p className="header__subtitle">Your private document assistant</p>
         </div>
-        <div className={`status ${isOllamaOnline ? 'status--online' : 'status--offline'}`}>
+        <div className={`status ${aiStatus.ready ? 'status--online' : 'status--offline'}`}>
           <span className="status__dot"></span>
-          {isOllamaOnline ? 'AI Ready' : 'AI Offline'}
+          {aiStatus.ready ? 'AI Ready' : aiStatus.loading ? 'Loading...' : 'AI Offline'}
         </div>
       </header>
 
-      {/* Ollama warning */}
-      {!isOllamaOnline && (
-        <div className="alert alert--warning">
-          <strong>AI is not available.</strong> Please make sure Ollama is running on your computer.
-          Visit <strong>ollama.ai</strong> to download and install it.
+      {/* Error message if AI failed to load */}
+      {aiStatus.error && (
+        <div className="alert alert--error">
+          <strong>Something went wrong:</strong> {aiStatus.error}
         </div>
       )}
 
@@ -172,7 +201,7 @@ const App: React.FC = () => {
           <button
             className="add-document-btn"
             onClick={handleAddDocument}
-            disabled={isProcessing}
+            disabled={isProcessing || !aiStatus.ready}
           >
             <span className="add-document-btn__icon">+</span>
             Add Document
@@ -181,7 +210,7 @@ const App: React.FC = () => {
           {processingFile && (
             <div className="processing">
               <div className="processing__spinner"></div>
-              Processing document...
+              Reading your document...
             </div>
           )}
 
@@ -197,7 +226,7 @@ const App: React.FC = () => {
           onSendMessage={handleSendMessage}
           onClearChat={handleClearChat}
           isLoading={isLoading}
-          isDisabled={!isOllamaOnline}
+          isDisabled={!aiStatus.ready}
           hasDocuments={documents.length > 0}
         />
       </main>
