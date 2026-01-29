@@ -1,9 +1,10 @@
 import { app } from 'electron';
 import path from 'path';
 
-// Dynamic import for ES modules compatibility
-let pipeline: any;
-let env: any;
+// Dynamic import helper that won't be converted to require by TypeScript
+async function dynamicImport(moduleName: string): Promise<any> {
+  return new Function('moduleName', 'return import(moduleName)')(moduleName);
+}
 
 export interface ModelStatus {
   ready: boolean;
@@ -51,10 +52,10 @@ export class LocalAIService {
     this.updateProgress(0, 'Starting AI setup...');
 
     try {
-      // Dynamic import of transformers
-      const transformers = await import('@xenova/transformers');
-      pipeline = transformers.pipeline;
-      env = transformers.env;
+      // Dynamic import of transformers (must use this pattern for ES modules in CommonJS)
+      const transformers = await dynamicImport('@xenova/transformers');
+      const pipeline = transformers.pipeline;
+      const env = transformers.env;
 
       // Configure model cache directory
       env.cacheDir = this.modelsDir;
