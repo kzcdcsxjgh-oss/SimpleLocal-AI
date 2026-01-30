@@ -1,6 +1,6 @@
 {
   "name": "simplelocal-ai",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A local desktop application for chatting with documents - 100% offline, 100% private",
   "main": "dist/main/index.js",
   "author": "SimpleLocal AI Team",
@@ -25,7 +25,15 @@
     "electron-store": "^10.0.0",
     "pdf-parse": "^1.1.1",
     "mammoth": "^1.8.0",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "sharp": "^0.32.0",
+    "onnxruntime-node": "1.14.0",
+    "onnxruntime-common": "1.14.0",
+    "color": "^4.2.3",
+    "color-convert": "^3.1.3",
+    "color-name": "^2.0.0",
+    "color-string": "^2.1.3",
+    "@huggingface/jinja": "^0.2.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -60,8 +68,14 @@
       "node_modules/color-name/**/*",
       "node_modules/color-string/**/*",
       "node_modules/onnxruntime-node/**/*",
+      "node_modules/onnxruntime-common/**/*",
       "node_modules/@lancedb/**/*",
-      "node_modules/@xenova/**/*"
+      "node_modules/@xenova/**/*",
+      "node_modules/apache-arrow/**/*",
+      "node_modules/semver/**/*",
+      "node_modules/detect-libc/**/*",
+      "node_modules/node-addon-api/**/*",
+      "node_modules/prebuild-install/**/*"
     ],
     "win": {
       "target": ["nsis"]
