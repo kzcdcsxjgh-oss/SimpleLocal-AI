@@ -83,9 +83,16 @@ export class LocalAIService {
    */
   private getModelPath(modelName: string): string {
     if (this.useBundledModels) {
-      // Return just the folder name (Xenova--model-name format)
-      // env.localModelPath will be set to the bundled models directory
-      return modelName.replace('/', '--');
+      // Build absolute file:// URL for the model directory
+      // Use file:/// (three slashes) for Windows absolute paths
+      const modelDir = path.join(this.bundledModelsDir, modelName.replace('/', '--'));
+      const normalizedPath = modelDir.replace(/\\/g, '/');
+      // For Windows paths like C:/..., we need file:///C:/...
+      // For Unix paths like /home/..., we need file:///home/...
+      if (normalizedPath.match(/^[A-Za-z]:/)) {
+        return 'file:///' + normalizedPath;
+      }
+      return 'file://' + normalizedPath;
     }
     // Use Hugging Face model ID for downloading
     return modelName;
@@ -122,14 +129,12 @@ export class LocalAIService {
       // Only allow remote models if bundled models are not available
       env.allowRemoteModels = !this.useBundledModels;
 
-      // Set local model path if using bundled models
-      if (this.useBundledModels) {
-        env.localModelPath = this.bundledModelsDir.replace(/\\/g, '/');
-      }
-
-      // Get the appropriate model paths
+      // Get the appropriate model paths (full file:// URLs for bundled models)
       const embeddingModelPath = this.getModelPath(this.EMBEDDING_MODEL);
       const generationModelPath = this.getModelPath(this.GENERATION_MODEL);
+
+      console.log('[LocalAI] Embedding model path:', embeddingModelPath);
+      console.log('[LocalAI] Generation model path:', generationModelPath);
 
       // Load embedding model first (smaller, faster)
       const embeddingMessage = this.useBundledModels
