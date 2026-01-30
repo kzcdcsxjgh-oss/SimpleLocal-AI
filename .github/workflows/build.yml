@@ -10,32 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  # Download models once and share between jobs
-  download-models:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Download AI models
-        run: node scripts/download-models.js
-
-      - name: Upload models artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-models
-          path: models/
-          retention-days: 1
-
   build-windows:
-    needs: download-models
     runs-on: windows-latest
     timeout-minutes: 60
 
@@ -48,11 +23,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Download models artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ai-models
-          path: models/
+      - name: Download AI models
+        run: node scripts/download-models.js
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -68,86 +40,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release/*.exe
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-mac:
-    needs: download-models
-    runs-on: macos-latest
-    timeout-minutes: 60
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Download models artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ai-models
-          path: models/
-
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build application
-        run: npm run build
-
-      - name: Package for macOS
-        run: npx electron-builder --mac --publish never
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            release/*.dmg
-            release/*.zip
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-linux:
-    needs: download-models
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Download models artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ai-models
-          path: models/
-
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build application
-        run: npm run build
-
-      - name: Package for Linux
-        run: npx electron-builder --linux --publish never
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            release/*.AppImage
-            release/*.deb
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
