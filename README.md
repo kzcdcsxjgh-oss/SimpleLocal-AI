@@ -10,7 +10,7 @@
 
 SimpleLocal AI is a free, open-source desktop application that lets you chat with your documents (PDFs, Word docs, text files) using AI—**100% locally on your computer**. No internet required after setup. No subscriptions. No data collection.
 
-**Just double-click and go.** The AI downloads automatically on first run.
+**Just double-click and go.** The AI is included - no internet required after installation.
 
 ## ✨ Features
 
@@ -27,7 +27,7 @@ SimpleLocal AI is a free, open-source desktop application that lets you chat wit
 
 1. **Download** the installer for your system from the Releases page
 2. **Install** by double-clicking the downloaded file
-3. **Run** SimpleLocal AI - on first launch, it will automatically download the AI (one-time, requires internet)
+3. **Run** SimpleLocal AI - the AI is already included, no internet needed!
 4. **Done!** Start adding documents and chatting
 
 ### For Developers
@@ -98,7 +98,7 @@ SimpleLocal-AI/
 
 ## 📖 How It Works
 
-1. **First Run**: The app downloads a small AI model (~500MB) automatically. This only happens once.
+1. **First Run**: The app loads the bundled AI model instantly. No downloads, no waiting!
 
 2. **Add Documents**: Click the big "Add Document" button to select PDFs, Word docs, or text files.
 
