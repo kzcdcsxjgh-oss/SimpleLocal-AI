@@ -86,8 +86,8 @@ export class LocalAIService {
       // Use local file path for bundled models
       // Replace / with -- to match the download script's naming convention
       const modelDir = path.join(this.bundledModelsDir, modelName.replace('/', '--'));
-      // Convert to forward slashes for cross-platform compatibility with transformers.js
-      return modelDir.replace(/\\/g, '/');
+      // Use file:// protocol so transformers.js treats it as absolute path
+      return 'file://' + modelDir.replace(/\\/g, '/');
     }
     // Use Hugging Face model ID for downloading
     return modelName;
