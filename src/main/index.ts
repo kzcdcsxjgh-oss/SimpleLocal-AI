@@ -3,6 +3,11 @@ import path from 'path';
 import { DocumentProcessor } from './services/documentProcessor';
 import { VectorStore } from './services/vectorStore';
 import { LocalAIService } from './services/localAIService';
+import {
+  validateFilePath,
+  validateMessageContent,
+  validateDocumentId
+} from './utils/validation';
 
 let mainWindow: BrowserWindow | null = null;
 let documentProcessor: DocumentProcessor;
@@ -10,6 +15,19 @@ let vectorStore: VectorStore;
 let localAI: LocalAIService;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+/**
+ * Safely send IPC message to renderer
+ * Handles null mainWindow and destroyed window cases
+ */
+function safeSend(channel: string, ...args: unknown[]): boolean {
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+    mainWindow.webContents.send(channel, ...args);
+    return true;
+  }
+  console.warn(`Cannot send to channel '${channel}': mainWindow not available`);
+  return false;
+}
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -53,7 +71,7 @@ async function initializeServices() {
 
   // Set up progress callback for AI initialization
   localAI.onProgress((status) => {
-    mainWindow?.webContents.send('ai:status', status);
+    safeSend('ai:status', status);
   });
 
   await vectorStore.initialize();
@@ -100,8 +118,15 @@ function setupIpcHandlers() {
   // Process and index a document
   ipcMain.handle('document:process', async (_event, filePath: string) => {
     try {
+      // Validate file path before processing
+      const pathValidation = validateFilePath(filePath);
+      if (!pathValidation.valid) {
+        console.error('Invalid file path:', pathValidation.error);
+        return { success: false, error: pathValidation.error };
+      }
+
       // Notify renderer that processing started
-      mainWindow?.webContents.send('document:processing', { filePath, status: 'started' });
+      safeSend('document:processing', { filePath, status: 'started' });
 
       // Process the document into chunks
       const chunks = await documentProcessor.processDocument(filePath);
@@ -122,12 +147,12 @@ function setupIpcHandlers() {
       // Store in vector database
       await vectorStore.addDocuments(documentsWithEmbeddings);
 
-      mainWindow?.webContents.send('document:processing', { filePath, status: 'completed' });
+      safeSend('document:processing', { filePath, status: 'completed' });
 
       return { success: true, chunks: chunks.length };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      mainWindow?.webContents.send('document:processing', {
+      safeSend('document:processing', {
         filePath,
         status: 'error',
         error: errorMessage
@@ -143,13 +168,32 @@ function setupIpcHandlers() {
 
   // Remove a document from the index
   ipcMain.handle('document:remove', async (_event, documentId: string) => {
-    await vectorStore.removeDocument(documentId);
-    return { success: true };
+    // Validate document ID before removal
+    const idValidation = validateDocumentId(documentId);
+    if (!idValidation.valid) {
+      console.error('Invalid document ID:', idValidation.error);
+      return { success: false, error: idValidation.error };
+    }
+
+    try {
+      await vectorStore.removeDocument(documentId);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: errorMessage };
+    }
   });
 
   // Chat with documents
   ipcMain.handle('chat:send', async (_event, message: string) => {
     try {
+      // Validate message content before processing
+      const messageValidation = validateMessageContent(message);
+      if (!messageValidation.valid) {
+        console.error('Invalid message:', messageValidation.error);
+        return { success: false, error: messageValidation.error };
+      }
+
       // Generate embedding for the query
       const queryEmbedding = await localAI.generateEmbedding(message);
 
@@ -160,16 +204,16 @@ function setupIpcHandlers() {
       let context = '';
       if (relevantChunks.length > 0) {
         context = relevantChunks
-          .map((chunk, i) => `[From: ${chunk.documentName}]\n${chunk.content}`)
+          .map((chunk) => `[From: ${chunk.documentName}]\n${chunk.content}`)
           .join('\n\n---\n\n');
       }
 
       // Generate response
       const response = await localAI.generate(message, context, (chunk) => {
-        mainWindow?.webContents.send('chat:stream', { chunk, done: false });
+        safeSend('chat:stream', { chunk, done: false });
       });
 
-      mainWindow?.webContents.send('chat:stream', { chunk: response, done: true });
+      safeSend('chat:stream', { chunk: response, done: true });
 
       return { success: true, response };
     } catch (error) {

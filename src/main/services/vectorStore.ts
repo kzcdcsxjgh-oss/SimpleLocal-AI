@@ -2,6 +2,7 @@ import * as lancedb from '@lancedb/lancedb';
 import path from 'path';
 import fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
+import { sanitizeDocumentId } from '../utils/validation';
 
 export interface VectorDocument {
   id: string;
@@ -169,10 +170,18 @@ export class VectorStore {
       return;
     }
 
+    // Sanitize document ID to prevent injection attacks
+    const sanitizedId = sanitizeDocumentId(documentId);
+    if (!sanitizedId) {
+      console.error('Invalid document ID format:', documentId);
+      throw new Error('Invalid document ID format');
+    }
+
     try {
-      await this.table.delete(`documentId = '${documentId}'`);
+      await this.table.delete(`documentId = '${sanitizedId}'`);
     } catch (error) {
       console.error('Error removing document:', error);
+      throw error;
     }
   }
 
