@@ -79,26 +79,6 @@ export class LocalAIService {
   }
 
   /**
-   * Get the model path for loading - uses bundled models if available
-   */
-  private getModelPath(modelName: string): string {
-    if (this.useBundledModels) {
-      // Build absolute file:// URL for the model directory
-      // Use file:/// (three slashes) for Windows absolute paths
-      const modelDir = path.join(this.bundledModelsDir, modelName.replace('/', '--'));
-      const normalizedPath = modelDir.replace(/\\/g, '/');
-      // For Windows paths like C:/..., we need file:///C:/...
-      // For Unix paths like /home/..., we need file:///home/...
-      if (normalizedPath.match(/^[A-Za-z]:/)) {
-        return 'file:///' + normalizedPath;
-      }
-      return 'file://' + normalizedPath;
-    }
-    // Use Hugging Face model ID for downloading
-    return modelName;
-  }
-
-  /**
    * Set callback for progress updates during model loading
    */
   onProgress(callback: (status: ModelStatus) => void): void {
@@ -122,16 +102,35 @@ export class LocalAIService {
       const pipeline = transformers.pipeline;
       const env = transformers.env;
 
-      // Configure model cache directory for downloaded models
-      env.cacheDir = this.modelsDir;
+      // Configure environment
       env.allowLocalModels = true;
 
-      // Only allow remote models if bundled models are not available
-      env.allowRemoteModels = !this.useBundledModels;
+      // Always set cacheDir for consistency
+      env.cacheDir = this.modelsDir;
 
-      // Get the appropriate model paths (full file:// URLs for bundled models)
-      const embeddingModelPath = this.getModelPath(this.EMBEDDING_MODEL);
-      const generationModelPath = this.getModelPath(this.GENERATION_MODEL);
+      let embeddingModelPath: string;
+      let generationModelPath: string;
+
+      if (this.useBundledModels) {
+        // For bundled models, use absolute paths directly
+        // This bypasses transformers.js path resolution entirely
+        embeddingModelPath = path.join(
+          this.bundledModelsDir,
+          this.EMBEDDING_MODEL.replace('/', '--')
+        );
+        generationModelPath = path.join(
+          this.bundledModelsDir,
+          this.GENERATION_MODEL.replace('/', '--')
+        );
+        env.allowRemoteModels = false;
+        console.log('[LocalAI] Using bundled models from:', this.bundledModelsDir);
+      } else {
+        // For downloading, use Hugging Face model IDs
+        embeddingModelPath = this.EMBEDDING_MODEL;
+        generationModelPath = this.GENERATION_MODEL;
+        env.allowRemoteModels = true;
+        console.log('[LocalAI] Will download models to:', this.modelsDir);
+      }
 
       console.log('[LocalAI] Embedding model path:', embeddingModelPath);
       console.log('[LocalAI] Generation model path:', generationModelPath);
