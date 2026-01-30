@@ -83,11 +83,9 @@ export class LocalAIService {
    */
   private getModelPath(modelName: string): string {
     if (this.useBundledModels) {
-      // Use local file path for bundled models
-      // Replace / with -- to match the download script's naming convention
-      const modelDir = path.join(this.bundledModelsDir, modelName.replace('/', '--'));
-      // Use file:// protocol so transformers.js treats it as absolute path
-      return 'file://' + modelDir.replace(/\\/g, '/');
+      // Return just the folder name (Xenova--model-name format)
+      // env.localModelPath will be set to the bundled models directory
+      return modelName.replace('/', '--');
     }
     // Use Hugging Face model ID for downloading
     return modelName;
@@ -123,6 +121,11 @@ export class LocalAIService {
 
       // Only allow remote models if bundled models are not available
       env.allowRemoteModels = !this.useBundledModels;
+
+      // Set local model path if using bundled models
+      if (this.useBundledModels) {
+        env.localModelPath = this.bundledModelsDir.replace(/\\/g, '/');
+      }
 
       // Get the appropriate model paths
       const embeddingModelPath = this.getModelPath(this.EMBEDDING_MODEL);
