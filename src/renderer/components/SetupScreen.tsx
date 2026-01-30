@@ -9,8 +9,8 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ progress, error }) => {
   // Friendly messages for different stages
   const getMessage = (progress: number): string => {
     if (progress < 10) return 'Starting up...';
-    if (progress < 50) return 'Downloading language understanding...';
-    if (progress < 95) return 'Downloading conversation ability...';
+    if (progress < 50) return 'Loading language understanding...';
+    if (progress < 95) return 'Loading conversation ability...';
     return 'Almost ready...';
   };
 
@@ -31,7 +31,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ progress, error }) => {
         <p className="setup-screen__message">
           {error
             ? 'Something went wrong while setting up.'
-            : "This is a one-time setup. We're downloading the AI so it can run privately on your computer."
+            : "This is a one-time setup. We're preparing the AI so it can run privately on your computer."
           }
         </p>
 

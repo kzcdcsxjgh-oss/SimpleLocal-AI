@@ -1,6 +1,6 @@
 {
   "name": "simplelocal-ai",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "A local desktop application for chatting with documents - 100% offline, 100% private",
   "main": "dist/main/index.js",
   "author": "SimpleLocal AI Team",
@@ -13,10 +13,11 @@
     "build": "npm run build:renderer && npm run build:main",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
-    "package": "npm run build && electron-builder",
-    "package:win": "npm run build && electron-builder --win",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:linux": "npm run build && electron-builder --linux"
+    "download-models": "node scripts/download-models.js",
+    "package": "npm run download-models && npm run build && electron-builder",
+    "package:win": "npm run download-models && npm run build && electron-builder --win",
+    "package:mac": "npm run download-models && npm run build && electron-builder --mac",
+    "package:linux": "npm run download-models && npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@xenova/transformers": "^2.17.0",
@@ -59,6 +60,13 @@
       "dist/**/*",
       "package.json",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "models",
+        "to": "models",
+        "filter": ["**/*"]
+      }
     ],
     "asarUnpack": [
       "node_modules/sharp/**/*",

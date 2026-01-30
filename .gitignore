@@ -16,6 +16,9 @@ simplelocal-data/
 *.db
 *.lance
 
+# AI Models (downloaded during build)
+models/
+
 # IDE
 .idea/
 .vscode/

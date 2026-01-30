@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import path from 'path';
+import fs from 'fs';
 
 // Dynamic import helper that won't be converted to require by TypeScript
 async function dynamicImport(moduleName: string): Promise<any> {
@@ -24,13 +25,70 @@ export class LocalAIService {
   };
   private progressCallback?: (status: ModelStatus) => void;
   private modelsDir: string;
+  private bundledModelsDir: string;
+  private useBundledModels: boolean = false;
 
   // Use small, efficient models that work well on consumer hardware
   private readonly EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
   private readonly GENERATION_MODEL = 'Xenova/Qwen1.5-0.5B-Chat';
 
   constructor() {
+    // User data directory for downloaded/cached models
     this.modelsDir = path.join(app.getPath('userData'), 'models');
+
+    // Bundled models directory (included with installer)
+    // In production: resources/models, in dev: project/models
+    const isPackaged = app.isPackaged;
+    if (isPackaged) {
+      this.bundledModelsDir = path.join(process.resourcesPath, 'models');
+    } else {
+      this.bundledModelsDir = path.join(__dirname, '..', '..', '..', 'models');
+    }
+
+    // Check if bundled models exist
+    this.useBundledModels = this.checkBundledModels();
+    if (this.useBundledModels) {
+      console.log('[LocalAI] Using bundled models from:', this.bundledModelsDir);
+    } else {
+      console.log('[LocalAI] Bundled models not found, will download from internet');
+    }
+  }
+
+  /**
+   * Check if bundled models are available
+   */
+  private checkBundledModels(): boolean {
+    try {
+      const embeddingModelDir = path.join(
+        this.bundledModelsDir,
+        this.EMBEDDING_MODEL.replace('/', '--')
+      );
+      const generationModelDir = path.join(
+        this.bundledModelsDir,
+        this.GENERATION_MODEL.replace('/', '--')
+      );
+
+      // Check if model directories exist and have config.json
+      const embeddingExists = fs.existsSync(path.join(embeddingModelDir, 'config.json'));
+      const generationExists = fs.existsSync(path.join(generationModelDir, 'config.json'));
+
+      return embeddingExists && generationExists;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get the model path for loading - uses bundled models if available
+   */
+  private getModelPath(modelName: string): string {
+    if (this.useBundledModels) {
+      // Use local file path for bundled models
+      const modelDir = path.join(this.bundledModelsDir, modelName.replace('/', '--'));
+      return modelDir;
+    }
+    // Use Hugging Face model ID for downloading
+    return modelName;
   }
 
   /**
@@ -41,7 +99,7 @@ export class LocalAIService {
   }
 
   /**
-   * Initialize the AI service - downloads models if needed
+   * Initialize the AI service - uses bundled models or downloads if needed
    */
   async initialize(): Promise<void> {
     if (this.modelStatus.ready || this.modelStatus.loading) {
@@ -57,36 +115,57 @@ export class LocalAIService {
       const pipeline = transformers.pipeline;
       const env = transformers.env;
 
-      // Configure model cache directory
+      // Configure model directories
       env.cacheDir = this.modelsDir;
       env.allowLocalModels = true;
-      env.allowRemoteModels = true;
+
+      // Only allow remote models if bundled models are not available
+      env.allowRemoteModels = !this.useBundledModels;
+
+      // If using bundled models, set the local model path
+      if (this.useBundledModels) {
+        env.localModelPath = this.bundledModelsDir;
+      }
+
+      // Get the appropriate model paths
+      const embeddingModelPath = this.getModelPath(this.EMBEDDING_MODEL);
+      const generationModelPath = this.getModelPath(this.GENERATION_MODEL);
 
       // Load embedding model first (smaller, faster)
-      this.updateProgress(10, 'Downloading language understanding...');
+      const embeddingMessage = this.useBundledModels
+        ? 'Loading language understanding...'
+        : 'Downloading language understanding...';
+      this.updateProgress(10, embeddingMessage);
+
       this.embeddingPipeline = await pipeline(
         'feature-extraction',
-        this.EMBEDDING_MODEL,
+        embeddingModelPath,
         {
+          local_files_only: this.useBundledModels,
           progress_callback: (progress: any) => {
-            if (progress.status === 'downloading') {
+            if (progress.status === 'downloading' || progress.status === 'loading') {
               const pct = 10 + (progress.progress || 0) * 0.4;
-              this.updateProgress(pct, 'Downloading language understanding...');
+              this.updateProgress(pct, embeddingMessage);
             }
           },
         }
       );
 
       // Load text generation model
-      this.updateProgress(50, 'Downloading conversation ability...');
+      const generationMessage = this.useBundledModels
+        ? 'Loading conversation ability...'
+        : 'Downloading conversation ability...';
+      this.updateProgress(50, generationMessage);
+
       this.generationPipeline = await pipeline(
         'text-generation',
-        this.GENERATION_MODEL,
+        generationModelPath,
         {
+          local_files_only: this.useBundledModels,
           progress_callback: (progress: any) => {
-            if (progress.status === 'downloading') {
+            if (progress.status === 'downloading' || progress.status === 'loading') {
               const pct = 50 + (progress.progress || 0) * 0.45;
-              this.updateProgress(pct, 'Downloading conversation ability...');
+              this.updateProgress(pct, generationMessage);
             }
           },
         }
