@@ -84,8 +84,10 @@ export class LocalAIService {
   private getModelPath(modelName: string): string {
     if (this.useBundledModels) {
       // Use local file path for bundled models
+      // Replace / with -- to match the download script's naming convention
       const modelDir = path.join(this.bundledModelsDir, modelName.replace('/', '--'));
-      return modelDir;
+      // Convert to forward slashes for cross-platform compatibility with transformers.js
+      return modelDir.replace(/\\/g, '/');
     }
     // Use Hugging Face model ID for downloading
     return modelName;
@@ -115,17 +117,12 @@ export class LocalAIService {
       const pipeline = transformers.pipeline;
       const env = transformers.env;
 
-      // Configure model directories
+      // Configure model cache directory for downloaded models
       env.cacheDir = this.modelsDir;
       env.allowLocalModels = true;
 
       // Only allow remote models if bundled models are not available
       env.allowRemoteModels = !this.useBundledModels;
-
-      // If using bundled models, set the local model path
-      if (this.useBundledModels) {
-        env.localModelPath = this.bundledModelsDir;
-      }
 
       // Get the appropriate model paths
       const embeddingModelPath = this.getModelPath(this.EMBEDDING_MODEL);
