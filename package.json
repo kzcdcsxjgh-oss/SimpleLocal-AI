@@ -1,6 +1,6 @@
 {
   "name": "simplelocal-ai",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "A local desktop application for chatting with documents - 100% offline, 100% private",
   "main": "dist/main/index.js",
   "author": "SimpleLocal AI Team",
