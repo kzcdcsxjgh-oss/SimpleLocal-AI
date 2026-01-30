@@ -25,8 +25,9 @@ export class LocalAIService {
   };
   private progressCallback?: (status: ModelStatus) => void;
   private modelsDir: string;
+  private localModelsDir: string;
   private bundledModelsDir: string;
-  private useBundledModels: boolean = false;
+  private hasBundledModels: boolean = false;
 
   // Use small, efficient models that work well on consumer hardware
   private readonly EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
@@ -35,6 +36,10 @@ export class LocalAIService {
   constructor() {
     // User data directory for downloaded/cached models
     this.modelsDir = path.join(app.getPath('userData'), 'models');
+
+    // Local models directory where we copy bundled models
+    // Structure: {localModelsDir}/Xenova/all-MiniLM-L6-v2/
+    this.localModelsDir = path.join(app.getPath('userData'), 'local-models');
 
     // Bundled models directory (included with installer)
     // In production: resources/models, in dev: project/models
@@ -46,11 +51,11 @@ export class LocalAIService {
     }
 
     // Check if bundled models exist
-    this.useBundledModels = this.checkBundledModels();
-    if (this.useBundledModels) {
-      console.log('[LocalAI] Using bundled models from:', this.bundledModelsDir);
+    this.hasBundledModels = this.checkBundledModels();
+    if (this.hasBundledModels) {
+      console.log('[LocalAI] Bundled models found at:', this.bundledModelsDir);
     } else {
-      console.log('[LocalAI] Bundled models not found, will download from internet');
+      console.log('[LocalAI] No bundled models, will download from internet');
     }
   }
 
@@ -79,6 +84,80 @@ export class LocalAIService {
   }
 
   /**
+   * Check if models are already copied to local directory
+   */
+  private checkLocalModels(): boolean {
+    try {
+      // Check for the correct directory structure: {localModelsDir}/Xenova/all-MiniLM-L6-v2/
+      const embeddingModelDir = path.join(this.localModelsDir, this.EMBEDDING_MODEL);
+      const generationModelDir = path.join(this.localModelsDir, this.GENERATION_MODEL);
+
+      const embeddingExists = fs.existsSync(path.join(embeddingModelDir, 'config.json'));
+      const generationExists = fs.existsSync(path.join(generationModelDir, 'config.json'));
+
+      return embeddingExists && generationExists;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Copy a directory recursively
+   */
+  private copyDirSync(src: string, dest: string): void {
+    // Create destination directory
+    fs.mkdirSync(dest, { recursive: true });
+
+    // Read source directory
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        this.copyDirSync(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+
+  /**
+   * Copy bundled models to local directory with correct structure
+   * Bundled: {bundledModelsDir}/Xenova--all-MiniLM-L6-v2/
+   * Target:  {localModelsDir}/Xenova/all-MiniLM-L6-v2/
+   */
+  private copyBundledModelsToLocal(): void {
+    console.log('[LocalAI] Copying bundled models to local directory...');
+
+    const models = [this.EMBEDDING_MODEL, this.GENERATION_MODEL];
+
+    for (const model of models) {
+      // Source: Xenova--all-MiniLM-L6-v2
+      const bundledDir = path.join(this.bundledModelsDir, model.replace('/', '--'));
+      // Target: Xenova/all-MiniLM-L6-v2
+      const localDir = path.join(this.localModelsDir, model);
+
+      if (fs.existsSync(bundledDir)) {
+        console.log(`[LocalAI] Copying ${model}...`);
+        console.log(`[LocalAI]   From: ${bundledDir}`);
+        console.log(`[LocalAI]   To: ${localDir}`);
+
+        // Create parent directory (e.g., Xenova/)
+        const parentDir = path.dirname(localDir);
+        fs.mkdirSync(parentDir, { recursive: true });
+
+        // Copy model files
+        this.copyDirSync(bundledDir, localDir);
+        console.log(`[LocalAI] Copied ${model} successfully`);
+      } else {
+        console.warn(`[LocalAI] Bundled model not found: ${bundledDir}`);
+      }
+    }
+  }
+
+  /**
    * Set callback for progress updates during model loading
    */
   onProgress(callback: (status: ModelStatus) => void): void {
@@ -102,50 +181,47 @@ export class LocalAIService {
       const pipeline = transformers.pipeline;
       const env = transformers.env;
 
-      // Configure environment
-      env.allowLocalModels = true;
+      // Determine if we can use local models
+      let useLocalModels = false;
 
-      // Always set cacheDir for consistency
+      if (this.hasBundledModels) {
+        // Check if models are already in local directory
+        if (!this.checkLocalModels()) {
+          this.updateProgress(5, 'Preparing AI models...');
+          // Copy bundled models to local directory with correct structure
+          this.copyBundledModelsToLocal();
+        }
+        useLocalModels = this.checkLocalModels();
+      }
+
+      // Configure transformers.js environment
+      env.allowLocalModels = true;
       env.cacheDir = this.modelsDir;
 
-      let embeddingModelPath: string;
-      let generationModelPath: string;
-
-      if (this.useBundledModels) {
-        // For bundled models, use absolute paths directly
-        // This bypasses transformers.js path resolution entirely
-        embeddingModelPath = path.join(
-          this.bundledModelsDir,
-          this.EMBEDDING_MODEL.replace('/', '--')
-        );
-        generationModelPath = path.join(
-          this.bundledModelsDir,
-          this.GENERATION_MODEL.replace('/', '--')
-        );
+      if (useLocalModels) {
+        // Set localModelPath to our local models directory
+        // transformers.js will look for: {localModelPath}/{model_id}/
+        env.localModelPath = this.localModelsDir;
         env.allowRemoteModels = false;
-        console.log('[LocalAI] Using bundled models from:', this.bundledModelsDir);
+        console.log('[LocalAI] Using local models from:', this.localModelsDir);
       } else {
-        // For downloading, use Hugging Face model IDs
-        embeddingModelPath = this.EMBEDDING_MODEL;
-        generationModelPath = this.GENERATION_MODEL;
         env.allowRemoteModels = true;
         console.log('[LocalAI] Will download models to:', this.modelsDir);
       }
 
-      console.log('[LocalAI] Embedding model path:', embeddingModelPath);
-      console.log('[LocalAI] Generation model path:', generationModelPath);
-
       // Load embedding model first (smaller, faster)
-      const embeddingMessage = this.useBundledModels
+      const embeddingMessage = useLocalModels
         ? 'Loading language understanding...'
         : 'Downloading language understanding...';
       this.updateProgress(10, embeddingMessage);
 
+      console.log('[LocalAI] Loading embedding model:', this.EMBEDDING_MODEL);
+
       this.embeddingPipeline = await pipeline(
         'feature-extraction',
-        embeddingModelPath,
+        this.EMBEDDING_MODEL,
         {
-          local_files_only: this.useBundledModels,
+          local_files_only: useLocalModels,
           progress_callback: (progress: any) => {
             if (progress.status === 'downloading' || progress.status === 'loading') {
               const pct = 10 + (progress.progress || 0) * 0.4;
@@ -156,16 +232,18 @@ export class LocalAIService {
       );
 
       // Load text generation model
-      const generationMessage = this.useBundledModels
+      const generationMessage = useLocalModels
         ? 'Loading conversation ability...'
         : 'Downloading conversation ability...';
       this.updateProgress(50, generationMessage);
 
+      console.log('[LocalAI] Loading generation model:', this.GENERATION_MODEL);
+
       this.generationPipeline = await pipeline(
         'text-generation',
-        generationModelPath,
+        this.GENERATION_MODEL,
         {
-          local_files_only: this.useBundledModels,
+          local_files_only: useLocalModels,
           progress_callback: (progress: any) => {
             if (progress.status === 'downloading' || progress.status === 'loading') {
               const pct = 50 + (progress.progress || 0) * 0.45;
