@@ -5,8 +5,10 @@
  */
 
 const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 // Models to download
 const MODELS = {
@@ -27,9 +29,10 @@ const MODELS = {
 
 const MODELS_DIR = path.join(__dirname, '..', 'models');
 const HF_BASE_URL = 'https://huggingface.co';
+const MAX_REDIRECTS = 10;
 
 /**
- * Download a file from URL to local path
+ * Download a file from URL to local path with proper redirect handling
  */
 function downloadFile(url, destPath) {
   return new Promise((resolve, reject) => {
@@ -47,22 +50,47 @@ function downloadFile(url, destPath) {
 
     console.log(`  [DOWN] ${path.basename(destPath)}...`);
 
-    const file = fs.createWriteStream(destPath);
+    let redirectCount = 0;
 
-    const request = (url) => {
-      https.get(url, (response) => {
-        // Handle redirects
-        if (response.statusCode === 301 || response.statusCode === 302) {
-          request(response.headers.location);
+    const doRequest = (requestUrl) => {
+      const parsedUrl = new URL(requestUrl);
+      const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+      const options = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'SimpleLocal-AI-Downloader/1.0',
+        },
+      };
+
+      const req = protocol.request(options, (response) => {
+        // Handle ALL redirect status codes (301, 302, 303, 307, 308)
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          redirectCount++;
+          if (redirectCount > MAX_REDIRECTS) {
+            reject(new Error(`Too many redirects (>${MAX_REDIRECTS})`));
+            return;
+          }
+
+          // Handle relative and absolute redirects
+          let redirectUrl = response.headers.location;
+          if (!redirectUrl.startsWith('http')) {
+            redirectUrl = new URL(redirectUrl, requestUrl).href;
+          }
+
+          doRequest(redirectUrl);
           return;
         }
 
         if (response.statusCode !== 200) {
-          fs.unlinkSync(destPath);
-          reject(new Error(`Failed to download: ${response.statusCode} ${url}`));
+          reject(new Error(`HTTP ${response.statusCode} for ${requestUrl}`));
           return;
         }
 
+        const file = fs.createWriteStream(destPath);
         const totalSize = parseInt(response.headers['content-length'], 10);
         let downloadedSize = 0;
 
@@ -70,7 +98,7 @@ function downloadFile(url, destPath) {
           downloadedSize += chunk.length;
           if (totalSize) {
             const percent = ((downloadedSize / totalSize) * 100).toFixed(1);
-            process.stdout.write(`\r  [DOWN] ${path.basename(destPath)}... ${percent}%`);
+            process.stdout.write(`\r  [DOWN] ${path.basename(destPath)}... ${percent}%   `);
           }
         });
 
@@ -81,13 +109,22 @@ function downloadFile(url, destPath) {
           process.stdout.write('\n');
           resolve();
         });
-      }).on('error', (err) => {
-        fs.unlinkSync(destPath);
+
+        file.on('error', (err) => {
+          fs.unlink(destPath, () => {}); // Delete partial file
+          reject(err);
+        });
+      });
+
+      req.on('error', (err) => {
+        fs.unlink(destPath, () => {}); // Delete partial file
         reject(err);
       });
+
+      req.end();
     };
 
-    request(url);
+    doRequest(url);
   });
 }
 
@@ -106,7 +143,7 @@ async function downloadModel(modelName, files) {
     try {
       await downloadFile(url, destPath);
     } catch (error) {
-      console.error(`  [FAIL] ${file}: ${error.message}`);
+      console.error(`\n  [FAIL] ${file}: ${error.message}`);
       throw error;
     }
   }
