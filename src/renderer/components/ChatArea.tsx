@@ -110,7 +110,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={
             isDisabled
-              ? 'Please start Ollama first...'
+              ? 'Waiting for AI to initialize...'
               : hasDocuments
               ? 'Ask me about your documents...'
               : 'Add documents first, then ask questions...'

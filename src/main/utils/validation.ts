@@ -47,11 +47,15 @@ export function validateFilePath(filePath: string): ValidationResult {
   // Normalize the path to resolve any . or .. segments
   const normalizedPath = path.normalize(trimmedPath);
 
-  // Check for path traversal (after normalization, should not contain ..)
-  // Also check the original path for suspicious patterns
-  if (trimmedPath.includes('..') || normalizedPath !== trimmedPath.replace(/\\/g, path.sep)) {
-    // Allow normalized paths but log for debugging
-    console.log(`Path normalized from "${trimmedPath}" to "${normalizedPath}"`);
+  // Check for path traversal attempts
+  // Reject paths containing '..' to prevent directory traversal attacks
+  if (trimmedPath.includes('..')) {
+    return { valid: false, error: 'Path traversal is not allowed' };
+  }
+
+  // Reject if normalized path differs from original (indicates suspicious path manipulation)
+  if (normalizedPath !== trimmedPath.replace(/\\/g, path.sep)) {
+    return { valid: false, error: 'Invalid path format' };
   }
 
   // Check extension
