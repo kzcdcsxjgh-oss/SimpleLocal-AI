@@ -17,7 +17,9 @@ export interface ModelStatus {
 
 export class LocalAIService {
   private embeddingPipeline: any = null;
-  private generationPipeline: any = null;
+  private llama: any = null;
+  private model: any = null;
+  private context: any = null;
   private modelStatus: ModelStatus = {
     ready: false,
     loading: false,
@@ -29,22 +31,22 @@ export class LocalAIService {
   private bundledModelsDir: string;
   private hasBundledModels: boolean = false;
 
-  // Use small, efficient models that work well on consumer hardware
+  // Embedding model - keep using transformers.js (small and efficient)
   private readonly EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
-  // Qwen1.5-1.8B-Chat: 3.6x larger than 0.5B, much better quality for document Q&A
-  // Verified available at: https://huggingface.co/Xenova/Qwen1.5-1.8B-Chat
-  private readonly GENERATION_MODEL = 'Xenova/Qwen1.5-1.8B-Chat';
+
+  // Generation model - Phi-3.5-mini via node-llama-cpp (best quality/size ratio)
+  // Q4_K_M quantization: ~2.3GB, runs great on 8GB RAM laptops
+  private readonly GENERATION_MODEL = 'Phi-3.5-mini-instruct-Q4_K_M.gguf';
+  private readonly GENERATION_MODEL_DISPLAY = 'Phi-3.5-mini-instruct';
 
   constructor() {
     // User data directory for downloaded/cached models
     this.modelsDir = path.join(app.getPath('userData'), 'models');
 
     // Local models directory where we copy bundled models
-    // Structure: {localModelsDir}/Xenova/all-MiniLM-L6-v2/
     this.localModelsDir = path.join(app.getPath('userData'), 'local-models');
 
     // Bundled models directory (included with installer)
-    // In production: resources/models, in dev: project/models
     const isPackaged = app.isPackaged;
     if (isPackaged) {
       this.bundledModelsDir = path.join(process.resourcesPath, 'models');
@@ -70,14 +72,11 @@ export class LocalAIService {
         this.bundledModelsDir,
         this.EMBEDDING_MODEL.replace('/', '--')
       );
-      const generationModelDir = path.join(
-        this.bundledModelsDir,
-        this.GENERATION_MODEL.replace('/', '--')
-      );
+      const generationModelPath = path.join(this.bundledModelsDir, this.GENERATION_MODEL);
 
-      // Check if model directories exist and have config.json
+      // Check if embedding model directory has config.json and GGUF model exists
       const embeddingExists = fs.existsSync(path.join(embeddingModelDir, 'config.json'));
-      const generationExists = fs.existsSync(path.join(generationModelDir, 'config.json'));
+      const generationExists = fs.existsSync(generationModelPath);
 
       return embeddingExists && generationExists;
     } catch {
@@ -88,18 +87,20 @@ export class LocalAIService {
   /**
    * Check if models are already copied to local directory
    */
-  private checkLocalModels(): boolean {
+  private checkLocalModels(): {
+    embedding: boolean;
+    generation: boolean;
+  } {
     try {
-      // Check for the correct directory structure: {localModelsDir}/Xenova/all-MiniLM-L6-v2/
       const embeddingModelDir = path.join(this.localModelsDir, this.EMBEDDING_MODEL);
-      const generationModelDir = path.join(this.localModelsDir, this.GENERATION_MODEL);
+      const generationModelPath = path.join(this.localModelsDir, this.GENERATION_MODEL);
 
       const embeddingExists = fs.existsSync(path.join(embeddingModelDir, 'config.json'));
-      const generationExists = fs.existsSync(path.join(generationModelDir, 'config.json'));
+      const generationExists = fs.existsSync(generationModelPath);
 
-      return embeddingExists && generationExists;
+      return { embedding: embeddingExists, generation: generationExists };
     } catch {
-      return false;
+      return { embedding: false, generation: false };
     }
   }
 
@@ -107,10 +108,7 @@ export class LocalAIService {
    * Copy a directory recursively
    */
   private copyDirSync(src: string, dest: string): void {
-    // Create destination directory
     fs.mkdirSync(dest, { recursive: true });
-
-    // Read source directory
     const entries = fs.readdirSync(src, { withFileTypes: true });
 
     for (const entry of entries) {
@@ -126,37 +124,36 @@ export class LocalAIService {
   }
 
   /**
-   * Copy bundled models to local directory with correct structure
-   * Bundled: {bundledModelsDir}/Xenova--all-MiniLM-L6-v2/
-   * Target:  {localModelsDir}/Xenova/all-MiniLM-L6-v2/
+   * Copy bundled models to local directory
    */
   private copyBundledModelsToLocal(): void {
     console.log('[LocalAI] Copying bundled models to local directory...');
 
-    const models = [this.EMBEDDING_MODEL, this.GENERATION_MODEL];
+    // Copy embedding model (directory structure)
+    const embeddingBundledDir = path.join(
+      this.bundledModelsDir,
+      this.EMBEDDING_MODEL.replace('/', '--')
+    );
+    const embeddingLocalDir = path.join(this.localModelsDir, this.EMBEDDING_MODEL);
 
-    for (const model of models) {
-      // Source: Xenova--all-MiniLM-L6-v2
-      const bundledDir = path.join(this.bundledModelsDir, model.replace('/', '--'));
-      // Target: Xenova/all-MiniLM-L6-v2
-      const localDir = path.join(this.localModelsDir, model);
-
-      if (fs.existsSync(bundledDir)) {
-        console.log(`[LocalAI] Copying ${model}...`);
-        console.log(`[LocalAI]   From: ${bundledDir}`);
-        console.log(`[LocalAI]   To: ${localDir}`);
-
-        // Create parent directory (e.g., Xenova/)
-        const parentDir = path.dirname(localDir);
-        fs.mkdirSync(parentDir, { recursive: true });
-
-        // Copy model files
-        this.copyDirSync(bundledDir, localDir);
-        console.log(`[LocalAI] Copied ${model} successfully`);
-      } else {
-        console.warn(`[LocalAI] Bundled model not found: ${bundledDir}`);
-      }
+    if (fs.existsSync(embeddingBundledDir)) {
+      console.log(`[LocalAI] Copying ${this.EMBEDDING_MODEL}...`);
+      const parentDir = path.dirname(embeddingLocalDir);
+      fs.mkdirSync(parentDir, { recursive: true });
+      this.copyDirSync(embeddingBundledDir, embeddingLocalDir);
     }
+
+    // Copy generation model (single GGUF file)
+    const generationBundledPath = path.join(this.bundledModelsDir, this.GENERATION_MODEL);
+    const generationLocalPath = path.join(this.localModelsDir, this.GENERATION_MODEL);
+
+    if (fs.existsSync(generationBundledPath)) {
+      console.log(`[LocalAI] Copying ${this.GENERATION_MODEL}...`);
+      fs.mkdirSync(this.localModelsDir, { recursive: true });
+      fs.copyFileSync(generationBundledPath, generationLocalPath);
+    }
+
+    console.log('[LocalAI] Bundled models copied successfully');
   }
 
   /**
@@ -167,7 +164,24 @@ export class LocalAIService {
   }
 
   /**
-   * Initialize the AI service - uses bundled models or downloads if needed
+   * Get the path to the GGUF model file
+   */
+  private getGenerationModelPath(): string | null {
+    const localPath = path.join(this.localModelsDir, this.GENERATION_MODEL);
+    if (fs.existsSync(localPath)) {
+      return localPath;
+    }
+
+    const bundledPath = path.join(this.bundledModelsDir, this.GENERATION_MODEL);
+    if (fs.existsSync(bundledPath)) {
+      return bundledPath;
+    }
+
+    return null;
+  }
+
+  /**
+   * Initialize the AI service
    */
   async initialize(): Promise<void> {
     if (this.modelStatus.ready || this.modelStatus.loading) {
@@ -178,89 +192,29 @@ export class LocalAIService {
     this.updateProgress(0, 'Starting AI setup...');
 
     try {
-      // Dynamic import of transformers (must use this pattern for ES modules in CommonJS)
-      const transformers = await dynamicImport('@xenova/transformers');
-      const pipeline = transformers.pipeline;
-      const env = transformers.env;
-
-      // Determine if we can use local models
-      let useLocalModels = false;
-
+      // Copy bundled models if needed
       if (this.hasBundledModels) {
-        // Check if models are already in local directory
-        if (!this.checkLocalModels()) {
+        const localModels = this.checkLocalModels();
+        if (!localModels.embedding || !localModels.generation) {
           this.updateProgress(5, 'Preparing AI models...');
-          // Copy bundled models to local directory with correct structure
           this.copyBundledModelsToLocal();
         }
-        useLocalModels = this.checkLocalModels();
       }
 
-      // Configure transformers.js environment
-      env.allowLocalModels = true;
-      env.cacheDir = this.modelsDir;
+      // Load embedding model using transformers.js
+      this.updateProgress(10, 'Loading language understanding...');
+      await this.loadEmbeddingModel();
 
-      if (useLocalModels) {
-        // Set localModelPath to our local models directory
-        // transformers.js will look for: {localModelPath}/{model_id}/
-        env.localModelPath = this.localModelsDir;
-        env.allowRemoteModels = false;
-        console.log('[LocalAI] Using local models from:', this.localModelsDir);
-      } else {
-        env.allowRemoteModels = true;
-        console.log('[LocalAI] Will download models to:', this.modelsDir);
-      }
-
-      // Load embedding model first (smaller, faster)
-      const embeddingMessage = useLocalModels
-        ? 'Loading language understanding...'
-        : 'Downloading language understanding...';
-      this.updateProgress(10, embeddingMessage);
-
-      console.log('[LocalAI] Loading embedding model:', this.EMBEDDING_MODEL);
-
-      this.embeddingPipeline = await pipeline(
-        'feature-extraction',
-        this.EMBEDDING_MODEL,
-        {
-          local_files_only: useLocalModels,
-          progress_callback: (progress: any) => {
-            if (progress.status === 'downloading' || progress.status === 'loading') {
-              const pct = 10 + (progress.progress || 0) * 0.4;
-              this.updateProgress(pct, embeddingMessage);
-            }
-          },
-        }
-      );
-
-      // Load text generation model
-      const generationMessage = useLocalModels
-        ? 'Loading conversation ability...'
-        : 'Downloading conversation ability...';
-      this.updateProgress(50, generationMessage);
-
-      console.log('[LocalAI] Loading generation model:', this.GENERATION_MODEL);
-
-      this.generationPipeline = await pipeline(
-        'text-generation',
-        this.GENERATION_MODEL,
-        {
-          local_files_only: useLocalModels,
-          progress_callback: (progress: any) => {
-            if (progress.status === 'downloading' || progress.status === 'loading') {
-              const pct = 50 + (progress.progress || 0) * 0.45;
-              this.updateProgress(pct, generationMessage);
-            }
-          },
-        }
-      );
+      // Load generation model using node-llama-cpp
+      this.updateProgress(50, 'Loading conversation model...');
+      await this.loadGenerationModel();
 
       this.updateProgress(100, 'Ready!');
       this.modelStatus = {
         ready: true,
         loading: false,
         progress: 100,
-        modelName: this.GENERATION_MODEL,
+        modelName: this.GENERATION_MODEL_DISPLAY,
       };
 
       if (this.progressCallback) {
@@ -284,6 +238,86 @@ export class LocalAIService {
   }
 
   /**
+   * Load embedding model using transformers.js
+   */
+  private async loadEmbeddingModel(): Promise<void> {
+    const transformers = await dynamicImport('@xenova/transformers');
+    const pipeline = transformers.pipeline;
+    const env = transformers.env;
+
+    const localModels = this.checkLocalModels();
+    const useLocalEmbedding = localModels.embedding;
+
+    env.allowLocalModels = true;
+    env.cacheDir = this.modelsDir;
+
+    if (useLocalEmbedding) {
+      env.localModelPath = this.localModelsDir;
+      env.allowRemoteModels = false;
+      console.log('[LocalAI] Loading local embedding model');
+    } else {
+      env.allowRemoteModels = true;
+      console.log('[LocalAI] Will download embedding model');
+    }
+
+    console.log('[LocalAI] Loading embedding model:', this.EMBEDDING_MODEL);
+
+    this.embeddingPipeline = await pipeline('feature-extraction', this.EMBEDDING_MODEL, {
+      local_files_only: useLocalEmbedding,
+      progress_callback: (progress: any) => {
+        if (progress.status === 'downloading' || progress.status === 'loading') {
+          const pct = 10 + (progress.progress || 0) * 0.35;
+          this.updateProgress(pct, 'Loading language understanding...');
+        }
+      },
+    });
+
+    console.log('[LocalAI] Embedding model loaded');
+  }
+
+  /**
+   * Load generation model using node-llama-cpp
+   */
+  private async loadGenerationModel(): Promise<void> {
+    const modelPath = this.getGenerationModelPath();
+
+    if (!modelPath) {
+      throw new Error(
+        `Generation model not found. Please download ${this.GENERATION_MODEL} and place it in the models directory.`
+      );
+    }
+
+    console.log('[LocalAI] Loading generation model from:', modelPath);
+
+    // Import node-llama-cpp
+    const { getLlama } = await dynamicImport('node-llama-cpp');
+
+    // Initialize llama
+    this.llama = await getLlama();
+    console.log('[LocalAI] Llama initialized');
+
+    this.updateProgress(60, 'Loading conversation model...');
+
+    // Load the model
+    this.model = await this.llama.loadModel({
+      modelPath,
+      onLoadProgress: (progress: number) => {
+        const pct = 60 + progress * 35;
+        this.updateProgress(pct, 'Loading conversation model...');
+      },
+    });
+
+    console.log('[LocalAI] Model loaded');
+
+    // Create a context for generation
+    this.context = await this.model.createContext({
+      contextSize: 4096, // Good balance for document Q&A
+    });
+
+    console.log('[LocalAI] Generation model ready');
+  }
+
+  /**
    * Check if the AI service is ready
    */
   getStatus(): ModelStatus {
@@ -303,7 +337,6 @@ export class LocalAIService {
       normalize: true,
     });
 
-    // Convert to regular array
     return Array.from(result.data);
   }
 
@@ -316,11 +349,11 @@ export class LocalAIService {
     context: string,
     onChunk?: (chunk: string) => void
   ): Promise<string> {
-    if (!this.generationPipeline) {
+    if (!this.model || !this.context) {
       throw new Error('AI not initialized. Please wait for setup to complete.');
     }
 
-    // Build a simple prompt with context
+    // Build the system prompt
     const systemPrompt = context
       ? `You are a helpful assistant that answers questions based on the provided documents. Be friendly, clear, and concise. If the documents don't contain relevant information, say so honestly.
 
@@ -330,71 +363,40 @@ ${context}
 Answer the user's question based on this information.`
       : `You are a helpful assistant. Be friendly, clear, and concise. The user hasn't added any documents yet, so just have a helpful conversation.`;
 
-    // Qwen2 ChatML prompt format
-    const prompt = `<|im_start|>system
-${systemPrompt}<|im_end|>
-<|im_start|>user
-${userMessage}<|im_end|>
-<|im_start|>assistant
-`;
-
     try {
-      // Track streamed text for callback
-      let previousText = '';
-      let streamedResponse = '';
+      // Import ChatSession
+      const { LlamaChatSession } = await dynamicImport('node-llama-cpp');
 
-      // Callback function for streaming tokens
-      const callbackFunction = onChunk
-        ? (output: any) => {
-            // Get the current generated text
-            const currentText = output?.[0]?.generated_text || '';
-
-            // Extract only the assistant response (after the prompt)
-            let assistantText = currentText;
-            if (currentText.includes('<|im_start|>assistant')) {
-              assistantText = currentText.split('<|im_start|>assistant').pop() || '';
-            }
-
-            // Clean the text
-            const cleanedText = assistantText
-              .replace(/<\|im_end\|>/g, '')
-              .replace(/<\|im_start\|>/g, '')
-              .trim();
-
-            // Send only the new tokens (delta)
-            if (cleanedText.length > previousText.length) {
-              const newChunk = cleanedText.slice(previousText.length);
-              if (newChunk) {
-                onChunk(newChunk);
-                streamedResponse = cleanedText;
-              }
-              previousText = cleanedText;
-            }
-          }
-        : undefined;
-
-      const result = await this.generationPipeline(prompt, {
-        max_new_tokens: 512, // Reduced from 1024 for faster response times
-        temperature: 0.7,
-        do_sample: true,
-        top_p: 0.9,
-        repetition_penalty: 1.1,
-        callback_function: callbackFunction,
+      // Create a chat session
+      const session = new LlamaChatSession({
+        contextSequence: this.context.getSequence(),
+        systemPrompt,
       });
 
-      // Extract the generated text
-      let response = result[0]?.generated_text || '';
+      let response = '';
 
-      // Remove the prompt from the response (ChatML format)
-      if (response.includes('<|im_start|>assistant')) {
-        response = response.split('<|im_start|>assistant').pop() || '';
+      // Generate response with streaming
+      if (onChunk) {
+        // Stream tokens
+        response = await session.prompt(userMessage, {
+          maxTokens: 512,
+          temperature: 0.7,
+          topP: 0.9,
+          onTextChunk: (chunk: string) => {
+            onChunk(chunk);
+          },
+        });
+      } else {
+        // Non-streaming
+        response = await session.prompt(userMessage, {
+          maxTokens: 512,
+          temperature: 0.7,
+          topP: 0.9,
+        });
       }
 
-      // Clean up any remaining tokens
-      response = response
-        .replace(/<\|im_end\|>/g, '')
-        .replace(/<\|im_start\|>/g, '')
-        .trim();
+      // Dispose the session to free memory
+      session.dispose();
 
       return response || "I'm sorry, I couldn't generate a response. Please try again.";
     } catch (error) {
