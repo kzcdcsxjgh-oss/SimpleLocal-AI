@@ -31,8 +31,9 @@ export class LocalAIService {
 
   // Use small, efficient models that work well on consumer hardware
   private readonly EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
-  // Qwen2-1.5B: 3x larger than original, much better quality for document Q&A
-  private readonly GENERATION_MODEL = 'Xenova/Qwen2-1.5B-Instruct';
+  // Qwen1.5-1.8B-Chat: 3.6x larger than 0.5B, much better quality for document Q&A
+  // Verified available at: https://huggingface.co/Xenova/Qwen1.5-1.8B-Chat
+  private readonly GENERATION_MODEL = 'Xenova/Qwen1.5-1.8B-Chat';
 
   constructor() {
     // User data directory for downloaded/cached models
