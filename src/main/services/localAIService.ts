@@ -31,8 +31,8 @@ export class LocalAIService {
 
   // Use small, efficient models that work well on consumer hardware
   private readonly EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
-  // Phi-3-mini: 3.8B params, excellent for document Q&A, runs on 8GB+ RAM
-  private readonly GENERATION_MODEL = 'Xenova/Phi-3-mini-4k-instruct';
+  // Qwen2-1.5B: 3x larger than original, much better quality for document Q&A
+  private readonly GENERATION_MODEL = 'Xenova/Qwen2-1.5B-Instruct';
 
   constructor() {
     // User data directory for downloaded/cached models
@@ -328,12 +328,12 @@ ${context}
 Answer the user's question based on this information.`
       : `You are a helpful assistant. Be friendly, clear, and concise. The user hasn't added any documents yet, so just have a helpful conversation.`;
 
-    // Phi-3 prompt format
-    const prompt = `<|system|>
-${systemPrompt}<|end|>
-<|user|>
-${userMessage}<|end|>
-<|assistant|>
+    // Qwen2 ChatML prompt format
+    const prompt = `<|im_start|>system
+${systemPrompt}<|im_end|>
+<|im_start|>user
+${userMessage}<|im_end|>
+<|im_start|>assistant
 `;
 
     try {
@@ -348,17 +348,15 @@ ${userMessage}<|end|>
       // Extract the generated text
       let response = result[0]?.generated_text || '';
 
-      // Remove the prompt from the response (Phi-3 format)
-      if (response.includes('<|assistant|>')) {
-        response = response.split('<|assistant|>').pop() || '';
+      // Remove the prompt from the response (ChatML format)
+      if (response.includes('<|im_start|>assistant')) {
+        response = response.split('<|im_start|>assistant').pop() || '';
       }
 
       // Clean up any remaining tokens
       response = response
-        .replace(/<\|end\|>/g, '')
-        .replace(/<\|user\|>/g, '')
-        .replace(/<\|system\|>/g, '')
-        .replace(/<\|assistant\|>/g, '')
+        .replace(/<\|im_end\|>/g, '')
+        .replace(/<\|im_start\|>/g, '')
         .trim();
 
       return response || "I'm sorry, I couldn't generate a response. Please try again.";
