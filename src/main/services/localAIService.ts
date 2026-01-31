@@ -31,7 +31,8 @@ export class LocalAIService {
 
   // Use small, efficient models that work well on consumer hardware
   private readonly EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
-  private readonly GENERATION_MODEL = 'Xenova/Qwen1.5-0.5B-Chat';
+  // Phi-3-mini: 3.8B params, excellent for document Q&A, runs on 8GB+ RAM
+  private readonly GENERATION_MODEL = 'Xenova/Phi-3-mini-4k-instruct';
 
   constructor() {
     // User data directory for downloaded/cached models
@@ -327,16 +328,17 @@ ${context}
 Answer the user's question based on this information.`
       : `You are a helpful assistant. Be friendly, clear, and concise. The user hasn't added any documents yet, so just have a helpful conversation.`;
 
-    const prompt = `<|im_start|>system
-${systemPrompt}<|im_end|>
-<|im_start|>user
-${userMessage}<|im_end|>
-<|im_start|>assistant
+    // Phi-3 prompt format
+    const prompt = `<|system|>
+${systemPrompt}<|end|>
+<|user|>
+${userMessage}<|end|>
+<|assistant|>
 `;
 
     try {
       const result = await this.generationPipeline(prompt, {
-        max_new_tokens: 512,
+        max_new_tokens: 1024,
         temperature: 0.7,
         do_sample: true,
         top_p: 0.9,
@@ -346,15 +348,17 @@ ${userMessage}<|im_end|>
       // Extract the generated text
       let response = result[0]?.generated_text || '';
 
-      // Remove the prompt from the response
-      if (response.includes('<|im_start|>assistant')) {
-        response = response.split('<|im_start|>assistant').pop() || '';
+      // Remove the prompt from the response (Phi-3 format)
+      if (response.includes('<|assistant|>')) {
+        response = response.split('<|assistant|>').pop() || '';
       }
 
       // Clean up any remaining tokens
       response = response
-        .replace(/<\|im_end\|>/g, '')
-        .replace(/<\|im_start\|>/g, '')
+        .replace(/<\|end\|>/g, '')
+        .replace(/<\|user\|>/g, '')
+        .replace(/<\|system\|>/g, '')
+        .replace(/<\|assistant\|>/g, '')
         .trim();
 
       return response || "I'm sorry, I couldn't generate a response. Please try again.";
