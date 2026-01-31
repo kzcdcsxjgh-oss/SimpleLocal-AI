@@ -309,11 +309,12 @@ export class LocalAIService {
 
   /**
    * Generate a response to a message with context
+   * Supports streaming via onChunk callback for real-time token output
    */
   async generate(
     userMessage: string,
     context: string,
-    _onChunk?: (chunk: string) => void
+    onChunk?: (chunk: string) => void
   ): Promise<string> {
     if (!this.generationPipeline) {
       throw new Error('AI not initialized. Please wait for setup to complete.');
@@ -338,12 +339,47 @@ ${userMessage}<|im_end|>
 `;
 
     try {
+      // Track streamed text for callback
+      let previousText = '';
+      let streamedResponse = '';
+
+      // Callback function for streaming tokens
+      const callbackFunction = onChunk
+        ? (output: any) => {
+            // Get the current generated text
+            const currentText = output?.[0]?.generated_text || '';
+
+            // Extract only the assistant response (after the prompt)
+            let assistantText = currentText;
+            if (currentText.includes('<|im_start|>assistant')) {
+              assistantText = currentText.split('<|im_start|>assistant').pop() || '';
+            }
+
+            // Clean the text
+            const cleanedText = assistantText
+              .replace(/<\|im_end\|>/g, '')
+              .replace(/<\|im_start\|>/g, '')
+              .trim();
+
+            // Send only the new tokens (delta)
+            if (cleanedText.length > previousText.length) {
+              const newChunk = cleanedText.slice(previousText.length);
+              if (newChunk) {
+                onChunk(newChunk);
+                streamedResponse = cleanedText;
+              }
+              previousText = cleanedText;
+            }
+          }
+        : undefined;
+
       const result = await this.generationPipeline(prompt, {
-        max_new_tokens: 1024,
+        max_new_tokens: 512, // Reduced from 1024 for faster response times
         temperature: 0.7,
         do_sample: true,
         top_p: 0.9,
         repetition_penalty: 1.1,
+        callback_function: callbackFunction,
       });
 
       // Extract the generated text

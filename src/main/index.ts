@@ -212,11 +212,13 @@ function setupIpcHandlers() {
           .join('\n\n---\n\n');
       }
 
-      // Generate response
+      // Generate response with streaming callback for real-time token output
       const response = await localAI.generate(message, context, (chunk) => {
+        // Send each chunk as it's generated for real-time display
         safeSend('chat:stream', { chunk, done: false });
       });
 
+      // Send final response to signal completion
       safeSend('chat:stream', { chunk: response, done: true });
 
       return { success: true, response };
