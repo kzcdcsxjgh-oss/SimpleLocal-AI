@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import DocumentList from './components/DocumentList';
 import ChatArea from './components/ChatArea';
 import ChatList from './components/ChatList';
@@ -47,6 +47,9 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [processingFile, setProcessingFile] = useState<string | null>(null);
 
+  // Debounce timer for message persistence
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Initialize and check AI status on mount
   useEffect(() => {
     const initialize = async () => {
@@ -92,17 +95,32 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Save messages to current session when they change
+  // Save messages to current session when they change (debounced for performance)
   useEffect(() => {
     if (currentSessionId && messages.length > 0) {
-      window.electronAPI.updateChatSession(currentSessionId, messages).then((updatedSession) => {
-        if (updatedSession) {
-          setSessions((prev) =>
-            prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
-          );
-        }
-      });
+      // Clear existing timer
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      // Debounce save operation - wait 1 second after last change
+      saveTimerRef.current = setTimeout(() => {
+        window.electronAPI.updateChatSession(currentSessionId, messages).then((updatedSession) => {
+          if (updatedSession) {
+            setSessions((prev) =>
+              prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
+            );
+          }
+        });
+      }, 1000);
     }
+
+    // Cleanup timer on unmount
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
   }, [messages, currentSessionId]);
 
   // Handle creating a new chat session
