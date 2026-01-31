@@ -3,6 +3,7 @@ import path from 'path';
 import { DocumentProcessor } from './services/documentProcessor';
 import { VectorStore } from './services/vectorStore';
 import { LocalAIService } from './services/localAIService';
+import { ChatStore } from './services/chatStore';
 import {
   validateFilePath,
   validateMessageContent,
@@ -13,6 +14,7 @@ let mainWindow: BrowserWindow | null = null;
 let documentProcessor: DocumentProcessor;
 let vectorStore: VectorStore;
 let localAI: LocalAIService;
+let chatStore: ChatStore;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -68,6 +70,7 @@ async function initializeServices() {
   vectorStore = new VectorStore(dataDir);
   documentProcessor = new DocumentProcessor();
   localAI = new LocalAIService();
+  chatStore = new ChatStore(dataDir);
 
   // Set up progress callback for AI initialization
   localAI.onProgress((status) => {
@@ -75,6 +78,7 @@ async function initializeServices() {
   });
 
   await vectorStore.initialize();
+  await chatStore.initialize();
 
   // Start AI initialization in background (don't block app start)
   localAI.initialize().catch((error) => {
@@ -225,6 +229,32 @@ function setupIpcHandlers() {
   // Clear chat history (for future implementation)
   ipcMain.handle('chat:clear', async () => {
     return { success: true };
+  });
+
+  // Chat session management
+  ipcMain.handle('chat:getSessions', async () => {
+    return await chatStore.getSessions();
+  });
+
+  ipcMain.handle('chat:getSession', async (_event, sessionId: string) => {
+    return await chatStore.getSession(sessionId);
+  });
+
+  ipcMain.handle('chat:createSession', async () => {
+    return await chatStore.createSession();
+  });
+
+  ipcMain.handle('chat:updateSession', async (_event, sessionId: string, messages: any[], title?: string) => {
+    return await chatStore.updateSession(sessionId, messages, title);
+  });
+
+  ipcMain.handle('chat:deleteSession', async (_event, sessionId: string) => {
+    const success = await chatStore.deleteSession(sessionId);
+    return { success };
+  });
+
+  ipcMain.handle('chat:renameSession', async (_event, sessionId: string, title: string) => {
+    return await chatStore.renameSession(sessionId, title);
   });
 }
 

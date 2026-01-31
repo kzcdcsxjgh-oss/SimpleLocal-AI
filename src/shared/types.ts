@@ -17,6 +17,14 @@ export interface ChatMessage {
   timestamp?: string;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProcessingStatus {
   filePath: string;
   status: 'started' | 'processing' | 'completed' | 'error';

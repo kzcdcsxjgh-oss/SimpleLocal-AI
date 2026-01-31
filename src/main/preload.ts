@@ -19,6 +19,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendMessage: (message: string) => ipcRenderer.invoke('chat:send', message),
   clearChat: () => ipcRenderer.invoke('chat:clear'),
 
+  // Chat session operations
+  getChatSessions: () => ipcRenderer.invoke('chat:getSessions'),
+  getChatSession: (sessionId: string) => ipcRenderer.invoke('chat:getSession', sessionId),
+  createChatSession: () => ipcRenderer.invoke('chat:createSession'),
+  updateChatSession: (sessionId: string, messages: ChatMessage[], title?: string) =>
+    ipcRenderer.invoke('chat:updateSession', sessionId, messages, title),
+  deleteChatSession: (sessionId: string) => ipcRenderer.invoke('chat:deleteSession', sessionId),
+  renameChatSession: (sessionId: string, title: string) =>
+    ipcRenderer.invoke('chat:renameSession', sessionId, title),
+
   // Event listeners
   onAIStatus: (callback: (data: AIStatus) => void) => {
     const subscription = (_event: any, data: any) => callback(data);
@@ -48,6 +58,21 @@ export interface AIStatus {
   modelName?: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ElectronAPI {
   checkAI: () => Promise<AIStatus>;
   initializeAI: () => Promise<{ success: boolean; error?: string }>;
@@ -57,6 +82,12 @@ export interface ElectronAPI {
   removeDocument: (documentId: string) => Promise<{ success: boolean }>;
   sendMessage: (message: string) => Promise<{ success: boolean; response?: string; error?: string }>;
   clearChat: () => Promise<{ success: boolean }>;
+  getChatSessions: () => Promise<ChatSession[]>;
+  getChatSession: (sessionId: string) => Promise<ChatSession | null>;
+  createChatSession: () => Promise<ChatSession>;
+  updateChatSession: (sessionId: string, messages: ChatMessage[], title?: string) => Promise<ChatSession | null>;
+  deleteChatSession: (sessionId: string) => Promise<{ success: boolean }>;
+  renameChatSession: (sessionId: string, title: string) => Promise<ChatSession | null>;
   onAIStatus: (callback: (data: AIStatus) => void) => () => void;
   onDocumentProcessing: (callback: (data: any) => void) => () => void;
   onChatStream: (callback: (data: { chunk: string; done: boolean }) => void) => () => void;

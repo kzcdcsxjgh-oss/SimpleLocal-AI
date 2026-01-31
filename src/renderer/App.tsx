@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import DocumentList from './components/DocumentList';
 import ChatArea from './components/ChatArea';
+import ChatList from './components/ChatList';
 import SetupScreen from './components/SetupScreen';
 
 interface Document {
@@ -17,6 +18,14 @@ interface Message {
   content: string;
 }
 
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AIStatus {
   ready: boolean;
   loading: boolean;
@@ -26,6 +35,8 @@ interface AIStatus {
 
 const App: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [aiStatus, setAIStatus] = useState<AIStatus>({
     ready: false,
@@ -46,6 +57,16 @@ const App: React.FC = () => {
       // Load existing documents
       const docs = await window.electronAPI.listDocuments();
       setDocuments(docs);
+
+      // Load chat sessions
+      const chatSessions = await window.electronAPI.getChatSessions();
+      setSessions(chatSessions);
+
+      // If there are sessions, select the most recent one
+      if (chatSessions.length > 0) {
+        setCurrentSessionId(chatSessions[0].id);
+        setMessages(chatSessions[0].messages);
+      }
     };
 
     initialize();
@@ -70,6 +91,54 @@ const App: React.FC = () => {
       unsubscribeProcessing();
     };
   }, []);
+
+  // Save messages to current session when they change
+  useEffect(() => {
+    if (currentSessionId && messages.length > 0) {
+      window.electronAPI.updateChatSession(currentSessionId, messages).then((updatedSession) => {
+        if (updatedSession) {
+          setSessions((prev) =>
+            prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
+          );
+        }
+      });
+    }
+  }, [messages, currentSessionId]);
+
+  // Handle creating a new chat session
+  const handleNewChat = useCallback(async () => {
+    const newSession = await window.electronAPI.createChatSession();
+    setSessions((prev) => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+    setMessages([]);
+  }, []);
+
+  // Handle selecting a chat session
+  const handleSelectSession = useCallback(async (sessionId: string) => {
+    const session = await window.electronAPI.getChatSession(sessionId);
+    if (session) {
+      setCurrentSessionId(session.id);
+      setMessages(session.messages);
+    }
+  }, []);
+
+  // Handle deleting a chat session
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    await window.electronAPI.deleteChatSession(sessionId);
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+    // If we deleted the current session, switch to another or clear
+    if (sessionId === currentSessionId) {
+      const remaining = sessions.filter((s) => s.id !== sessionId);
+      if (remaining.length > 0) {
+        setCurrentSessionId(remaining[0].id);
+        setMessages(remaining[0].messages);
+      } else {
+        setCurrentSessionId(null);
+        setMessages([]);
+      }
+    }
+  }, [currentSessionId, sessions]);
 
   // Handle adding documents
   const handleAddDocument = useCallback(async () => {
@@ -100,6 +169,15 @@ const App: React.FC = () => {
   // Handle sending messages
   const handleSendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return;
+
+    // Create a new session if none exists
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      const newSession = await window.electronAPI.createChatSession();
+      setSessions((prev) => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      sessionId = newSession.id;
+    }
 
     // Add user message
     const userMessage: Message = {
@@ -150,7 +228,7 @@ const App: React.FC = () => {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessage.id
-            ? { ...msg, content: 'Sorry, something went wrong. Please try again.' }
+            ? { ...msg, content: 'Sorry, er ging iets mis. Probeer het opnieuw.' }
             : msg
         )
       );
@@ -158,13 +236,23 @@ const App: React.FC = () => {
     } finally {
       unsubscribe();
     }
-  }, [isLoading]);
+  }, [isLoading, currentSessionId]);
 
   // Handle clearing chat
   const handleClearChat = useCallback(async () => {
     await window.electronAPI.clearChat();
     setMessages([]);
-  }, []);
+    if (currentSessionId) {
+      await window.electronAPI.updateChatSession(currentSessionId, []);
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === currentSessionId
+            ? { ...s, messages: [], title: 'Nieuw gesprek', updatedAt: new Date().toISOString() }
+            : s
+        )
+      );
+    }
+  }, [currentSessionId]);
 
   // Show setup screen while AI is loading for the first time
   if (aiStatus.loading && !aiStatus.ready) {
@@ -177,46 +265,32 @@ const App: React.FC = () => {
       <header className="header">
         <div>
           <h1 className="header__title">SimpleLocal AI</h1>
-          <p className="header__subtitle">Your private document assistant</p>
+          <p className="header__subtitle">Uw privé document-assistent</p>
         </div>
         <div className={`status ${aiStatus.ready ? 'status--online' : 'status--offline'}`}>
           <span className="status__dot"></span>
-          {aiStatus.ready ? 'AI Ready' : aiStatus.loading ? 'Loading...' : 'AI Offline'}
+          {aiStatus.ready ? 'AI Gereed' : aiStatus.loading ? 'Laden...' : 'AI Offline'}
         </div>
       </header>
 
       {/* Error message if AI failed to load */}
       {aiStatus.error && (
         <div className="alert alert--error">
-          <strong>Something went wrong:</strong> {aiStatus.error}
+          <strong>Er ging iets mis:</strong> {aiStatus.error}
         </div>
       )}
 
       {/* Main content */}
       <main className="main">
-        {/* Sidebar with documents */}
-        <aside className="sidebar">
-          <h2 className="sidebar__title">Your Documents</h2>
-
-          <button
-            className="add-document-btn"
-            onClick={handleAddDocument}
-            disabled={isProcessing || !aiStatus.ready}
-          >
-            <span className="add-document-btn__icon">+</span>
-            Add Document
-          </button>
-
-          {processingFile && (
-            <div className="processing">
-              <div className="processing__spinner"></div>
-              Reading your document...
-            </div>
-          )}
-
-          <DocumentList
-            documents={documents}
-            onRemove={handleRemoveDocument}
+        {/* Left sidebar with chats */}
+        <aside className="sidebar sidebar--chats">
+          <h2 className="sidebar__title">Gesprekken</h2>
+          <ChatList
+            sessions={sessions}
+            currentSessionId={currentSessionId}
+            onSelectSession={handleSelectSession}
+            onNewChat={handleNewChat}
+            onDeleteSession={handleDeleteSession}
           />
         </aside>
 
@@ -229,6 +303,32 @@ const App: React.FC = () => {
           isDisabled={!aiStatus.ready}
           hasDocuments={documents.length > 0}
         />
+
+        {/* Right sidebar with documents */}
+        <aside className="sidebar sidebar--documents">
+          <h2 className="sidebar__title">Uw Documenten</h2>
+
+          <button
+            className="add-document-btn"
+            onClick={handleAddDocument}
+            disabled={isProcessing || !aiStatus.ready}
+          >
+            <span className="add-document-btn__icon">+</span>
+            Document Toevoegen
+          </button>
+
+          {processingFile && (
+            <div className="processing">
+              <div className="processing__spinner"></div>
+              Document wordt gelezen...
+            </div>
+          )}
+
+          <DocumentList
+            documents={documents}
+            onRemove={handleRemoveDocument}
+          />
+        </aside>
       </main>
     </div>
   );
