@@ -88,17 +88,16 @@
       "node_modules/prebuild-install/**/*"
     ],
     "win": {
-      "target": ["nsis"]
+      "target": ["portable"]
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.exe"
     },
     "mac": {
       "target": ["dmg"]
     },
     "linux": {
       "target": ["AppImage"]
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false
     }
   }
 }
