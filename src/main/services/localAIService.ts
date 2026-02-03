@@ -161,8 +161,38 @@ export class LocalAIService {
   }
 
   /**
+   * Check if an error is a retryable network error
+   */
+  private isRetryableError(error: Error): boolean {
+    const retryableCodes = [
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'ETIMEDOUT',
+      'ENETUNREACH',
+      'EHOSTUNREACH',
+      'EPIPE',
+      'EAI_AGAIN',
+      'ECONNABORTED',
+      'ESOCKETTIMEDOUT',
+    ];
+    const errorCode = (error as NodeJS.ErrnoException).code;
+    return retryableCodes.includes(errorCode || '') ||
+           error.message.includes('socket hang up') ||
+           error.message.includes('network');
+  }
+
+  /**
+   * Sleep for a given number of milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
    * Download the generation model from HuggingFace at first run.
    * Handles HTTP redirects (HuggingFace uses 302 → CDN).
+   * Includes retry logic with exponential backoff for network errors.
    */
   private async downloadGenerationModel(): Promise<void> {
     const destPath = path.join(this.localModelsDir, this.GENERATION_MODEL);
@@ -171,53 +201,111 @@ export class LocalAIService {
     console.log('[LocalAI] Downloading generation model (~2.3 GB)...');
     this.updateProgress(20, 'Downloading AI model (~2.3 GB)...');
 
-    await new Promise<void>((resolve, reject) => {
-      const doRequest = (url: string, redirectsLeft: number): void => {
-        if (redirectsLeft <= 0) {
-          reject(new Error('Too many redirects downloading generation model'));
-          return;
-        }
+    const maxRetries = 4;
+    const baseDelay = 2000; // 2 seconds
+    const socketTimeout = 30000; // 30 seconds timeout for socket inactivity
 
-        const parsed = new URL(url);
-        const transport = parsed.protocol === 'https:' ? https : http;
-
-        transport.get(url, { headers: { 'User-Agent': 'SimpleLocal-AI/1.0' } }, (res) => {
-          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-            const location = res.headers.location;
-            const redirectUrl = location.startsWith('http') ? location : new URL(location, url).href;
-            res.resume(); // consume response to free socket
-            doRequest(redirectUrl, redirectsLeft - 1);
-            return;
-          }
-
-          if (res.statusCode !== 200) {
-            reject(new Error(`HTTP ${res.statusCode} downloading generation model`));
-            return;
-          }
-
-          const totalSize = parseInt(res.headers['content-length'] || '0', 10);
-          let downloaded = 0;
-          const file = fs.createWriteStream(destPath);
-
-          res.on('data', (chunk: Buffer) => {
-            downloaded += chunk.length;
-            if (totalSize) {
-              const pct = 20 + (downloaded / totalSize) * 35; // 20 % → 55 %
-              const percent = ((downloaded / totalSize) * 100).toFixed(1);
-              this.updateProgress(pct, `Downloading AI model... ${percent}%`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const doRequest = (url: string, redirectsLeft: number): void => {
+            if (redirectsLeft <= 0) {
+              reject(new Error('Too many redirects downloading generation model'));
+              return;
             }
-          });
 
-          res.pipe(file);
-          file.on('finish', () => { file.close(); resolve(); });
-          file.on('error', (err) => { fs.unlink(destPath, () => {}); reject(err); });
-        }).on('error', (err) => { fs.unlink(destPath, () => {}); reject(err); });
-      };
+            const parsed = new URL(url);
+            const transport = parsed.protocol === 'https:' ? https : http;
 
-      doRequest(this.GENERATION_MODEL_URL, 10);
-    });
+            const req = transport.get(
+              url,
+              {
+                headers: { 'User-Agent': 'SimpleLocal-AI/1.0' },
+                timeout: socketTimeout,
+              },
+              (res) => {
+                if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                  const location = res.headers.location;
+                  const redirectUrl = location.startsWith('http') ? location : new URL(location, url).href;
+                  res.resume(); // consume response to free socket
+                  doRequest(redirectUrl, redirectsLeft - 1);
+                  return;
+                }
 
-    console.log('[LocalAI] Generation model downloaded successfully');
+                if (res.statusCode !== 200) {
+                  reject(new Error(`HTTP ${res.statusCode} downloading generation model`));
+                  return;
+                }
+
+                const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+                let downloaded = 0;
+                const file = fs.createWriteStream(destPath);
+
+                // Set timeout for data reception
+                res.setTimeout(socketTimeout, () => {
+                  res.destroy();
+                  file.close();
+                  fs.unlink(destPath, () => {});
+                  reject(new Error('Download stalled - no data received'));
+                });
+
+                res.on('data', (chunk: Buffer) => {
+                  downloaded += chunk.length;
+                  if (totalSize) {
+                    const pct = 20 + (downloaded / totalSize) * 35; // 20 % → 55 %
+                    const percent = ((downloaded / totalSize) * 100).toFixed(1);
+                    this.updateProgress(pct, `Downloading AI model... ${percent}%`);
+                  }
+                });
+
+                res.pipe(file);
+                file.on('finish', () => { file.close(); resolve(); });
+                file.on('error', (err) => { fs.unlink(destPath, () => {}); reject(err); });
+              }
+            );
+
+            req.on('timeout', () => {
+              req.destroy();
+              reject(new Error('Connection timeout'));
+            });
+
+            req.on('error', (err) => {
+              fs.unlink(destPath, () => {});
+              reject(err);
+            });
+          };
+
+          doRequest(this.GENERATION_MODEL_URL, 10);
+        });
+
+        // If we reach here, download succeeded
+        console.log('[LocalAI] Generation model downloaded successfully');
+        return;
+
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error('Unknown error');
+        const isRetryable = this.isRetryableError(err);
+
+        console.error(`[LocalAI] Download attempt ${attempt}/${maxRetries} failed:`, err.message);
+
+        // Clean up partial download
+        try {
+          if (fs.existsSync(destPath)) {
+            fs.unlinkSync(destPath);
+          }
+        } catch { /* ignore cleanup errors */ }
+
+        if (attempt < maxRetries && isRetryable) {
+          const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff: 2s, 4s, 8s, 16s
+          console.log(`[LocalAI] Retrying in ${delay / 1000}s...`);
+          this.updateProgress(20, `Connection error, retrying in ${delay / 1000}s... (attempt ${attempt + 1}/${maxRetries})`);
+          await this.sleep(delay);
+        } else {
+          // Not retryable or max retries exceeded
+          throw new Error(`Download failed after ${attempt} attempt(s): ${err.message}`);
+        }
+      }
+    }
   }
 
   /**
