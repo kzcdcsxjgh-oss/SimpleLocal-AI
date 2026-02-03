@@ -81,8 +81,12 @@
       "node_modules/prebuild-install/**/*"
     ],
     "win": {
-      "target": ["zip"],
-      "artifactName": "${productName}-${version}-win.zip"
+      "target": ["nsis"],
+      "artifactName": "${productName}-${version}-win-setup.exe",
+      "nsis": {
+        "createShortcut": true,
+        "shortcutName": "SimpleLocal AI"
+      }
     },
     "mac": {
       "target": ["dmg"]
