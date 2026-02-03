@@ -395,9 +395,7 @@ Answer the user's question based on this information.`
         });
       }
 
-      // Dispose the session to free memory
-      session.dispose();
-
+      // Note: LlamaChatSession doesn't have dispose(), memory is managed by the context
       return response || "I'm sorry, I couldn't generate a response. Please try again.";
     } catch (error) {
       console.error('Generation error:', error);
