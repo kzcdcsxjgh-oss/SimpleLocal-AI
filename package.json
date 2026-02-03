@@ -88,10 +88,10 @@
       "node_modules/prebuild-install/**/*"
     ],
     "win": {
-      "target": ["portable"]
+      "target": ["zip"]
     },
-    "portable": {
-      "artifactName": "${productName}-${version}-portable.exe"
+    "zip": {
+      "artifactName": "${productName}-${version}-win.zip"
     },
     "mac": {
       "target": ["dmg"]
