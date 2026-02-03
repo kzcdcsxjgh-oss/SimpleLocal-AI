@@ -27,9 +27,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Download AI models
-        run: node scripts/download-models.js
-
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 

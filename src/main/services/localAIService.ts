@@ -1,6 +1,9 @@
 import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import https from 'https';
+import http from 'http';
+import { URL } from 'url';
 
 // Dynamic import helper that won't be converted to require by TypeScript
 async function dynamicImport(moduleName: string): Promise<any> {
@@ -38,6 +41,7 @@ export class LocalAIService {
   // Q4_K_M quantization: ~2.3GB, runs great on 8GB RAM laptops
   private readonly GENERATION_MODEL = 'Phi-3.5-mini-instruct-Q4_K_M.gguf';
   private readonly GENERATION_MODEL_DISPLAY = 'Phi-3.5-mini-instruct';
+  private readonly GENERATION_MODEL_URL = 'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf';
 
   constructor() {
     // User data directory for downloaded/cached models
@@ -157,6 +161,66 @@ export class LocalAIService {
   }
 
   /**
+   * Download the generation model from HuggingFace at first run.
+   * Handles HTTP redirects (HuggingFace uses 302 → CDN).
+   */
+  private async downloadGenerationModel(): Promise<void> {
+    const destPath = path.join(this.localModelsDir, this.GENERATION_MODEL);
+    fs.mkdirSync(this.localModelsDir, { recursive: true });
+
+    console.log('[LocalAI] Downloading generation model (~2.3 GB)...');
+    this.updateProgress(20, 'Downloading AI model (~2.3 GB)...');
+
+    await new Promise<void>((resolve, reject) => {
+      const doRequest = (url: string, redirectsLeft: number): void => {
+        if (redirectsLeft <= 0) {
+          reject(new Error('Too many redirects downloading generation model'));
+          return;
+        }
+
+        const parsed = new URL(url);
+        const transport = parsed.protocol === 'https:' ? https : http;
+
+        transport.get(url, { headers: { 'User-Agent': 'SimpleLocal-AI/1.0' } }, (res) => {
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            const location = res.headers.location;
+            const redirectUrl = location.startsWith('http') ? location : new URL(location, url).href;
+            res.resume(); // consume response to free socket
+            doRequest(redirectUrl, redirectsLeft - 1);
+            return;
+          }
+
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP ${res.statusCode} downloading generation model`));
+            return;
+          }
+
+          const totalSize = parseInt(res.headers['content-length'] || '0', 10);
+          let downloaded = 0;
+          const file = fs.createWriteStream(destPath);
+
+          res.on('data', (chunk: Buffer) => {
+            downloaded += chunk.length;
+            if (totalSize) {
+              const pct = 20 + (downloaded / totalSize) * 35; // 20 % → 55 %
+              const percent = ((downloaded / totalSize) * 100).toFixed(1);
+              this.updateProgress(pct, `Downloading AI model... ${percent}%`);
+            }
+          });
+
+          res.pipe(file);
+          file.on('finish', () => { file.close(); resolve(); });
+          file.on('error', (err) => { fs.unlink(destPath, () => {}); reject(err); });
+        }).on('error', (err) => { fs.unlink(destPath, () => {}); reject(err); });
+      };
+
+      doRequest(this.GENERATION_MODEL_URL, 10);
+    });
+
+    console.log('[LocalAI] Generation model downloaded successfully');
+  }
+
+  /**
    * Set callback for progress updates during model loading
    */
   onProgress(callback: (status: ModelStatus) => void): void {
@@ -202,11 +266,19 @@ export class LocalAIService {
       }
 
       // Load embedding model using transformers.js
-      this.updateProgress(10, 'Loading language understanding...');
+      this.updateProgress(5, 'Loading language understanding...');
       await this.loadEmbeddingModel();
 
+      // Download generation model on first run if not bundled / already cached
+      if (!this.hasBundledModels) {
+        const localModels = this.checkLocalModels();
+        if (!localModels.generation) {
+          await this.downloadGenerationModel();
+        }
+      }
+
       // Load generation model using node-llama-cpp
-      this.updateProgress(50, 'Loading conversation model...');
+      this.updateProgress(55, 'Loading conversation model...');
       await this.loadGenerationModel();
 
       this.updateProgress(100, 'Ready!');
@@ -266,7 +338,7 @@ export class LocalAIService {
       local_files_only: useLocalEmbedding,
       progress_callback: (progress: any) => {
         if (progress.status === 'downloading' || progress.status === 'loading') {
-          const pct = 10 + (progress.progress || 0) * 0.35;
+          const pct = 5 + (progress.progress || 0) * 0.15;
           this.updateProgress(pct, 'Loading language understanding...');
         }
       },
@@ -296,13 +368,13 @@ export class LocalAIService {
     this.llama = await getLlama();
     console.log('[LocalAI] Llama initialized');
 
-    this.updateProgress(60, 'Loading conversation model...');
+    this.updateProgress(55, 'Loading conversation model...');
 
     // Load the model
     this.model = await this.llama.loadModel({
       modelPath,
       onLoadProgress: (progress: number) => {
-        const pct = 60 + progress * 35;
+        const pct = 55 + progress * 40;
         this.updateProgress(pct, 'Loading conversation model...');
       },
     });
