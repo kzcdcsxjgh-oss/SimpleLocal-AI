@@ -81,7 +81,8 @@
       "node_modules/prebuild-install/**/*"
     ],
     "nsis": {
-      "createShortcut": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
       "shortcutName": "SimpleLocal AI"
     },
     "win": {
