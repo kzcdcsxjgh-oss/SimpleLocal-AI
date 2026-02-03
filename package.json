@@ -88,9 +88,7 @@
       "node_modules/prebuild-install/**/*"
     ],
     "win": {
-      "target": ["zip"]
-    },
-    "zip": {
+      "target": ["zip"],
       "artifactName": "${productName}-${version}-win.zip"
     },
     "mac": {
