@@ -80,13 +80,13 @@
       "node_modules/node-addon-api/**/*",
       "node_modules/prebuild-install/**/*"
     ],
+    "nsis": {
+      "createShortcut": true,
+      "shortcutName": "SimpleLocal AI"
+    },
     "win": {
       "target": ["nsis"],
-      "artifactName": "${productName}-${version}-win-setup.exe",
-      "nsis": {
-        "createShortcut": true,
-        "shortcutName": "SimpleLocal AI"
-      }
+      "artifactName": "${productName}-${version}-win-setup.exe"
     },
     "mac": {
       "target": ["dmg"]
