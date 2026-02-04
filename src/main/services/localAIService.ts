@@ -469,12 +469,24 @@ export class LocalAIService {
 
     console.log('[LocalAI] Model loaded');
 
-    // Create a context for generation
+    // Cap context size to what the model actually supports, with a 4096 upper bound
+    const desiredContextSize = Math.min(4096, this.model.trainContextSize);
+    console.log(
+      `[LocalAI] Requesting context size ${desiredContextSize} (model max: ${this.model.trainContextSize})`
+    );
+
+    // Create a context for generation.
+    // failedCreationRemedy lets node-llama-cpp automatically retry with a smaller
+    // context size when the initial allocation fails (e.g. due to insufficient RAM).
     this.context = await this.model.createContext({
-      contextSize: 4096, // Good balance for document Q&A
+      contextSize: desiredContextSize,
+      failedCreationRemedy: {
+        retries: 6,
+        autoContextSizeShrink: 0.16, // shrink by 16% on each retry
+      },
     });
 
-    console.log('[LocalAI] Generation model ready');
+    console.log(`[LocalAI] Generation model ready (context size: ${this.context.contextSize})`);
   }
 
   /**
