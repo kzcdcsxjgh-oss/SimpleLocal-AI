@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "feature-dev": {
+      "command": "npx",
+      "args": ["-y", "@claude-plugins-official/feature-dev"],
+      "env": {}
+    }
+  }
+}
