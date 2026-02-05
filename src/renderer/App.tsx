@@ -3,6 +3,7 @@ import DocumentList from './components/DocumentList';
 import ChatArea from './components/ChatArea';
 import ChatList from './components/ChatList';
 import SetupScreen from './components/SetupScreen';
+import Settings from './components/Settings';
 
 interface Document {
   id: string;
@@ -40,6 +41,7 @@ interface AIStatus {
   loading: boolean;
   progress: number;
   error?: string;
+  provider?: string;
 }
 
 const App: React.FC = () => {
@@ -56,6 +58,7 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [processingFile, setProcessingFile] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Initialize on mount
   useEffect(() => {
@@ -289,9 +292,18 @@ const App: React.FC = () => {
           <h1 className="header__title">SimpleLocal AI</h1>
           <p className="header__subtitle">Uw privé document-assistent</p>
         </div>
-        <div className={`status ${aiStatus.ready ? 'status--online' : 'status--offline'}`}>
-          <span className="status__dot"></span>
-          {aiStatus.ready ? 'AI Gereed' : 'AI Offline'}
+        <div className="header__actions">
+          <div className={`status ${aiStatus.ready ? 'status--online' : 'status--offline'}`}>
+            <span className="status__dot"></span>
+            {aiStatus.ready ? (aiStatus.provider || 'AI') : 'Offline'}
+          </div>
+          <button
+            className="settings-btn"
+            onClick={() => setIsSettingsOpen(true)}
+            title="Instellingen"
+          >
+            ⚙
+          </button>
         </div>
       </header>
 
@@ -360,6 +372,9 @@ const App: React.FC = () => {
           />
         </aside>
       </main>
+
+      {/* Settings modal */}
+      <Settings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 };

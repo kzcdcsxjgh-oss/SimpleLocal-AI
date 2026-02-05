@@ -21,6 +21,7 @@ import type {
 import { SQLiteStorage } from './storage/sqlite';
 import { FTS5Search } from './search/fts';
 import { OllamaAdapter } from './adapters/ollama';
+import { OpenAIAdapter } from './adapters/openai';
 import { DocumentProcessor } from './document-processor';
 
 // Re-export types
@@ -51,8 +52,31 @@ export class Core {
     const dbPath = path.join(config.dataDir, 'simplelocal.db');
     this.storage = new SQLiteStorage(dbPath);
     this.searchEngine = new FTS5Search(this.storage);
-    this.llm = new OllamaAdapter(config.llm);
+    this.llm = this.createLLMAdapter(config.llm);
     this.processor = new DocumentProcessor();
+  }
+
+  /**
+   * Create LLM adapter based on provider config
+   */
+  private createLLMAdapter(config?: LLMConfig): ILLM {
+    const provider = config?.provider ?? 'ollama';
+
+    switch (provider) {
+      case 'openai':
+        return new OpenAIAdapter(config);
+      case 'ollama':
+      default:
+        return new OllamaAdapter(config);
+    }
+  }
+
+  /**
+   * Change LLM provider at runtime
+   */
+  setLLMConfig(config: LLMConfig): void {
+    this.llm = this.createLLMAdapter(config);
+    this.config.llm = config;
   }
 
   async initialize(): Promise<void> {
