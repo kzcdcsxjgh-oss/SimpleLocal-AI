@@ -1,0 +1,9 @@
+{
+  "plugins": {
+    "feature-dev": {
+      "source": "claude-plugins-official",
+      "enabled": true,
+      "version": "latest"
+    }
+  }
+}
