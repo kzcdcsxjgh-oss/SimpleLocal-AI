@@ -1,12 +1,43 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
-import { Core } from '../core';
+import fs from 'fs';
+import { Core, LLMConfig } from '../core';
 import type { Source } from '../core';
 
 let mainWindow: BrowserWindow | null = null;
 let core: Core;
+let settingsPath: string;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+interface Settings {
+  llm: LLMConfig;
+}
+
+function loadSettings(): Settings {
+  const defaults: Settings = {
+    llm: { provider: 'ollama', baseUrl: 'http://localhost:11434', model: 'llama3.2' },
+  };
+
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, 'utf-8');
+      return { ...defaults, ...JSON.parse(data) };
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  }
+
+  return defaults;
+}
+
+function saveSettings(settings: Settings): void {
+  try {
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  } catch (error) {
+    console.error('Error saving settings:', error);
+  }
+}
 
 /**
  * Safely send IPC message to renderer
@@ -51,17 +82,29 @@ async function createWindow() {
 async function initializeCore() {
   const userDataPath = app.getPath('userData');
   const dataDir = path.join(userDataPath, 'simplelocal-data');
+  settingsPath = path.join(userDataPath, 'settings.json');
 
-  core = new Core({ dataDir });
+  // Load saved settings
+  const settings = loadSettings();
+
+  core = new Core({ dataDir, llm: settings.llm });
   await core.initialize();
 
   // Check LLM status and notify renderer
   const llmAvailable = await core.isLLMAvailable();
+  const config = core.getLLMConfig();
+  const providerName = config.provider === 'openai' ? 'OpenAI' : 'Ollama';
+
   safeSend('ai:status', {
     ready: llmAvailable,
     loading: false,
     progress: 100,
-    error: llmAvailable ? undefined : 'Ollama niet gevonden. Start Ollama met: ollama serve',
+    error: llmAvailable
+      ? undefined
+      : config.provider === 'openai'
+        ? 'OpenAI API niet beschikbaar. Controleer je API key.'
+        : 'Ollama niet gevonden. Start Ollama met: ollama serve',
+    provider: providerName,
   });
 }
 
@@ -70,12 +113,62 @@ function setupIpcHandlers() {
   // === AI Status ===
   ipcMain.handle('ai:check', async () => {
     const ready = await core.isLLMAvailable();
+    const config = core.getLLMConfig();
     return {
       ready,
       loading: false,
       progress: 100,
-      error: ready ? undefined : 'Ollama niet beschikbaar',
+      error: ready ? undefined : 'LLM niet beschikbaar',
+      provider: config.provider === 'openai' ? 'OpenAI' : 'Ollama',
     };
+  });
+
+  // === Settings ===
+  ipcMain.handle('settings:get', async () => {
+    const settings = loadSettings();
+    // Don't send full API key to renderer, just indicate if it's set
+    return {
+      llm: {
+        ...settings.llm,
+        apiKey: settings.llm.apiKey ? '••••••••' : undefined,
+        hasApiKey: !!settings.llm.apiKey,
+      },
+    };
+  });
+
+  ipcMain.handle('settings:set', async (_event, newSettings: { llm: LLMConfig }) => {
+    const currentSettings = loadSettings();
+
+    // If apiKey is masked or empty, keep the existing key
+    const apiKey = newSettings.llm.apiKey === '••••••••' || !newSettings.llm.apiKey
+      ? currentSettings.llm.apiKey
+      : newSettings.llm.apiKey;
+
+    const updatedSettings: Settings = {
+      llm: {
+        ...newSettings.llm,
+        apiKey,
+      },
+    };
+
+    saveSettings(updatedSettings);
+
+    // Update Core with new LLM config
+    core.setLLMConfig(updatedSettings.llm);
+
+    // Check new LLM status
+    const ready = await core.isLLMAvailable();
+    const config = core.getLLMConfig();
+
+    safeSend('ai:status', {
+      ready,
+      loading: false,
+      progress: 100,
+      error: ready ? undefined : 'LLM niet beschikbaar na wijziging',
+      provider: config.provider === 'openai' ? 'OpenAI' : 'Ollama',
+    });
+
+    return { success: true, ready };
   });
 
   // === File Dialog ===

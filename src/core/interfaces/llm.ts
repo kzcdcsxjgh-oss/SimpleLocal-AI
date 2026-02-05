@@ -7,10 +7,14 @@
 
 import type { Message, GenerateOptions, StreamChunk } from './types';
 
+export type LLMProvider = 'ollama' | 'openai';
+
 export interface LLMConfig {
+  provider?: LLMProvider;
   baseUrl?: string;
   model?: string;
   timeout?: number;
+  apiKey?: string;
 }
 
 export interface ILLM {

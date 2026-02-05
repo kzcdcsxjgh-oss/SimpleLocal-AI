@@ -6,6 +6,21 @@ export interface AIStatus {
   loading: boolean;
   progress: number;
   error?: string;
+  provider?: string;
+}
+
+export type LLMProvider = 'ollama' | 'openai';
+
+export interface LLMSettings {
+  provider?: LLMProvider;
+  baseUrl?: string;
+  model?: string;
+  apiKey?: string;
+  hasApiKey?: boolean;
+}
+
+export interface AppSettings {
+  llm: LLMSettings;
 }
 
 export interface Source {
@@ -51,6 +66,10 @@ export interface ChatStreamData {
 contextBridge.exposeInMainWorld('electronAPI', {
   // === AI Status ===
   checkAI: () => ipcRenderer.invoke('ai:check'),
+
+  // === Settings ===
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (settings: AppSettings) => ipcRenderer.invoke('settings:set', settings),
 
   // === File Dialog ===
   openFileDialog: () => ipcRenderer.invoke('dialog:openFile'),
@@ -107,6 +126,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 export interface ElectronAPI {
   // AI
   checkAI: () => Promise<AIStatus>;
+
+  // Settings
+  getSettings: () => Promise<AppSettings>;
+  setSettings: (settings: AppSettings) => Promise<{ success: boolean; ready: boolean }>;
 
   // File Dialog
   openFileDialog: () => Promise<{ canceled: boolean; filePaths: string[] }>;
