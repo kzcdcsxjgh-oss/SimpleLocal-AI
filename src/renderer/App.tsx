@@ -69,7 +69,7 @@ const App: React.FC = () => {
       const docs = await window.electronAPI.listDocuments();
       setDocuments(docs);
 
-      const convs = await window.electronAPI.getChatSessions();
+      const convs = await window.electronAPI.listConversations();
       setConversations(convs);
 
       if (convs.length > 0) {
@@ -120,7 +120,7 @@ const App: React.FC = () => {
 
   // Delete conversation
   const handleDeleteSession = useCallback(async (conversationId: string) => {
-    await window.electronAPI.deleteChatSession(conversationId);
+    await window.electronAPI.deleteConversation(conversationId);
     setConversations((prev) => prev.filter((c) => c.id !== conversationId));
 
     if (conversationId === currentConversationId) {
@@ -253,7 +253,7 @@ const App: React.FC = () => {
         setIsLoading(false);
 
         // Refresh conversation list to show updated title
-        window.electronAPI.getChatSessions().then(setConversations);
+        window.electronAPI.listConversations().then(setConversations);
       }
     });
 
@@ -276,8 +276,11 @@ const App: React.FC = () => {
 
   // Clear chat
   const handleClearChat = useCallback(async () => {
+    if (currentConversationId) {
+      await window.electronAPI.clearChat(currentConversationId);
+    }
     setMessages([]);
-  }, []);
+  }, [currentConversationId]);
 
   // Show setup screen while loading
   if (aiStatus.loading && !aiStatus.ready) {

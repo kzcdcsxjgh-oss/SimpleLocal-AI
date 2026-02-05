@@ -11,12 +11,10 @@
 import type { ILLM, LLMConfig } from '../interfaces/llm';
 import type { Message, GenerateOptions, StreamChunk } from '../interfaces/types';
 import { LLMConnectionError } from '../interfaces/types';
+import { buildSystemPrompt, collectStream } from './helpers';
 
-export interface OpenAIConfig extends LLMConfig {
-  apiKey?: string;
-}
-
-const DEFAULT_CONFIG: Required<OpenAIConfig> = {
+const DEFAULT_CONFIG: Required<LLMConfig> = {
+  provider: 'openai',
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4o-mini',
   timeout: 120000,
@@ -24,9 +22,9 @@ const DEFAULT_CONFIG: Required<OpenAIConfig> = {
 };
 
 export class OpenAIAdapter implements ILLM {
-  private config: Required<OpenAIConfig>;
+  private config: Required<LLMConfig>;
 
-  constructor(config?: OpenAIConfig) {
+  constructor(config?: LLMConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -57,7 +55,7 @@ export class OpenAIAdapter implements ILLM {
       throw new LLMConnectionError('API key is niet ingesteld');
     }
 
-    const systemPrompt = this.buildSystemPrompt(context, options?.systemPrompt);
+    const systemPrompt = buildSystemPrompt(context, options?.systemPrompt);
 
     const openaiMessages = [
       { role: 'system', content: systemPrompt },
@@ -160,43 +158,16 @@ export class OpenAIAdapter implements ILLM {
     context: string,
     options?: GenerateOptions
   ): Promise<string> {
-    const chunks: string[] = [];
-
-    for await (const chunk of this.generate(messages, context, options)) {
-      if (!chunk.done) {
-        chunks.push(chunk.content);
-      }
-    }
-
-    return chunks.join('');
+    return collectStream(this.generate(messages, context, options));
   }
 
   getConfig(): LLMConfig {
     return {
+      provider: this.config.provider,
       baseUrl: this.config.baseUrl,
       model: this.config.model,
       timeout: this.config.timeout,
     };
-  }
-
-  /**
-   * Build system prompt with document context
-   */
-  private buildSystemPrompt(context: string, customPrompt?: string): string {
-    const base = customPrompt ?? `Je bent een behulpzame assistent die vragen beantwoordt over documenten.
-Gebruik ALLEEN de informatie uit de gegeven context om te antwoorden.
-Als het antwoord niet in de context staat, zeg dat eerlijk.
-Antwoord in dezelfde taal als de vraag.`;
-
-    if (!context) {
-      return base;
-    }
-
-    return `${base}
-
---- DOCUMENT CONTEXT ---
-${context}
---- EINDE CONTEXT ---`;
   }
 }
 

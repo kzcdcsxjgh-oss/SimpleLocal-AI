@@ -35,12 +35,22 @@ export class FTS5Search implements ISearch {
     }
 
     const ftsResults = this.storage.searchFTS(sanitizedQuery, documentIds, limit);
+    if (ftsResults.length === 0) return [];
+
+    // Batch fetch chunks en documenten in één query per type
+    const chunkIds = ftsResults.map(r => r.chunk_id);
+    const uniqueDocIds = [...new Set(ftsResults.map(r => r.document_id))];
+    const chunks = this.storage.getChunksByIds(chunkIds);
+    const documents = this.storage.getDocumentsByIds(uniqueDocIds);
+
+    const chunkMap = new Map(chunks.map(c => [c.id, c]));
+    const documentMap = new Map(documents.map(d => [d.id, d]));
 
     const results: SearchResult[] = [];
 
     for (const ftsResult of ftsResults) {
-      const chunk = await this.storage.getChunk(ftsResult.chunk_id);
-      const document = await this.storage.getDocument(ftsResult.document_id);
+      const chunk = chunkMap.get(ftsResult.chunk_id);
+      const document = documentMap.get(ftsResult.document_id);
 
       if (chunk && document) {
         const score = Math.abs(ftsResult.score); // BM25 returns negative scores

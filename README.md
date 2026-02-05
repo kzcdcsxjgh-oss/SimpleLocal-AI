@@ -10,7 +10,7 @@
 
 SimpleLocal AI is a free, open-source desktop application that lets you chat with your documents (PDFs, Word docs, text files) using AI—**100% locally on your computer**. No internet required after setup. No subscriptions. No data collection.
 
-**Just double-click and go.** The AI is included - no internet required after installation.
+**Just double-click and go.** By default the app uses [Ollama](https://ollama.ai) for fully local, private AI. You can also connect to any OpenAI-compatible API if you prefer.
 
 ## ✨ Features
 
@@ -27,8 +27,8 @@ SimpleLocal AI is a free, open-source desktop application that lets you chat wit
 
 1. **Download** the installer for your system from the Releases page
 2. **Install** by double-clicking the downloaded file
-3. **Run** SimpleLocal AI - the AI is already included, no internet needed!
-4. **Done!** Start adding documents and chatting
+3. **Install Ollama** from [ollama.ai](https://ollama.ai) and run `ollama serve` (or skip this step to use an OpenAI-compatible API instead)
+4. **Run** SimpleLocal AI and start adding documents and chatting
 
 ### For Developers
 
@@ -62,28 +62,39 @@ npm run package:linux  # Linux (.AppImage)
 SimpleLocal-AI/
 ├── src/
 │   ├── main/                 # Electron main process
-│   │   ├── index.ts          # Main entry point
-│   │   ├── preload.ts        # Secure IPC bridge
-│   │   └── services/         # Backend services
-│   │       ├── documentProcessor.ts  # PDF/DOCX parsing
-│   │       ├── vectorStore.ts        # LanceDB integration
-│   │       └── localAIService.ts     # Bundled AI (Transformers.js)
+│   │   ├── index.ts          # Main entry point & IPC handlers
+│   │   └── preload.ts        # Secure IPC bridge (contextBridge)
 │   │
 │   ├── renderer/             # React frontend
 │   │   ├── App.tsx           # Main application
 │   │   ├── components/       # UI components
 │   │   │   ├── ChatArea.tsx
+│   │   │   ├── ChatList.tsx
 │   │   │   ├── DocumentList.tsx
+│   │   │   ├── Settings.tsx     # LLM provider settings
 │   │   │   └── SetupScreen.tsx  # First-run setup
 │   │   └── styles.css        # Senior-friendly styling
+│   │
+│   ├── core/                 # Framework-agnostic core library
+│   │   ├── index.ts          # Core class (main entry point)
+│   │   ├── document-processor.ts  # PDF/DOCX/TXT/MD parsing & chunking
+│   │   ├── adapters/         # LLM provider adapters
+│   │   │   ├── ollama.ts     # Ollama HTTP API
+│   │   │   ├── openai.ts     # OpenAI-compatible API
+│   │   │   └── helpers.ts    # Shared adapter utilities
+│   │   ├── storage/          # Persistence
+│   │   │   └── sqlite.ts     # SQLite via better-sqlite3
+│   │   ├── search/           # Full-text search
+│   │   │   └── fts.ts        # SQLite FTS5
+│   │   └── interfaces/       # TypeScript interfaces
 │   │
 │   └── shared/               # Shared types
 │       └── types.ts
 │
 ├── package.json
 ├── vite.config.ts            # Frontend build config
-├── tsconfig.json             # TypeScript config
-└── tsconfig.main.json        # Main process TypeScript config
+├── tsconfig.json             # TypeScript config (renderer)
+└── tsconfig.main.json        # TypeScript config (main process)
 ```
 
 ## 🛠️ Tech Stack
@@ -92,28 +103,30 @@ SimpleLocal-AI/
 |-------|------------|---------|
 | Desktop | Electron | Cross-platform desktop app |
 | Frontend | React + TypeScript | User interface |
-| AI Engine | Transformers.js | Bundled local AI (no external setup!) |
-| Vector DB | LanceDB | Local document embeddings |
+| AI Engine | Ollama / OpenAI-compatible | Local or cloud LLM (user's choice) |
+| Search | SQLite FTS5 | Full-text search with BM25 ranking |
+| Database | better-sqlite3 | Local persistence (documents, chats) |
 | Document Processing | pdf-parse, mammoth | PDF and DOCX parsing |
 
 ## 📖 How It Works
 
-1. **First Run**: The app loads the bundled AI model instantly. No downloads, no waiting!
+1. **First Run**: The app connects to your local Ollama instance (or an OpenAI-compatible API you configure in Settings).
 
-2. **Add Documents**: Click the big "Add Document" button to select PDFs, Word docs, or text files.
+2. **Add Documents**: Click the "Add Document" button to select PDFs, Word docs, text files, or Markdown.
 
-3. **Processing**: The app reads your documents and creates searchable embeddings locally.
+3. **Processing**: The app reads your documents, splits them into chunks, and indexes them locally using SQLite FTS5 for fast full-text search.
 
-4. **Chat**: Ask questions in natural language. The AI searches your documents and answers based on their content.
+4. **Chat**: Ask questions in natural language. The app searches your documents for relevant context, sends it to the LLM together with your question, and streams the answer back.
 
 ```
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│  Your Docs  │───▶│   Chunking   │───▶│  Embeddings │
+│  Your Docs  │───▶│   Chunking   │───▶│  FTS5 Index │
 └─────────────┘    └──────────────┘    └─────────────┘
                                               │
                                               ▼
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Answer    │◀───│  Local AI    │◀───│   LanceDB   │
+│   Answer    │◀───│  Ollama /    │◀───│   SQLite    │
+│  (streamed) │    │  OpenAI API  │    │             │
 └─────────────┘    └──────────────┘    └─────────────┘
 ```
 
@@ -138,8 +151,8 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
-- [Transformers.js](https://huggingface.co/docs/transformers.js) for making AI run in JavaScript
-- [LanceDB](https://lancedb.com) for the embedded vector database
+- [Ollama](https://ollama.ai) for making local LLMs accessible and easy to run
+- [better-sqlite3](https://github.com/JoshuaWise/better-sqlite3) for fast, embedded SQLite with FTS5
 - [Electron](https://electronjs.org) for cross-platform desktop support
 
 ---

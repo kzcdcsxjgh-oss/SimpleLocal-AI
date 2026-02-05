@@ -211,6 +211,28 @@ export class SQLiteStorage implements IStorage {
     return row ? this.rowToChunk(row) : null;
   }
 
+  getChunksByIds(ids: string[]): Chunk[] {
+    if (!this.db || ids.length === 0) return [];
+
+    const placeholders = ids.map(() => '?').join(', ');
+    const rows = this.db.prepare(
+      `SELECT * FROM chunks WHERE id IN (${placeholders})`
+    ).all(...ids) as ChunkRow[];
+
+    return rows.map(row => this.rowToChunk(row));
+  }
+
+  getDocumentsByIds(ids: string[]): Document[] {
+    if (!this.db || ids.length === 0) return [];
+
+    const placeholders = ids.map(() => '?').join(', ');
+    const rows = this.db.prepare(
+      `SELECT * FROM documents WHERE id IN (${placeholders})`
+    ).all(...ids) as DocumentRow[];
+
+    return rows.map(row => this.rowToDocument(row));
+  }
+
   async deleteChunksForDocument(documentId: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 

@@ -379,7 +379,10 @@ function setupIpcHandlers() {
     };
   });
 
-  ipcMain.handle('chat:clear', async () => {
+  ipcMain.handle('chat:clear', async (_event, conversationId?: string) => {
+    if (conversationId) {
+      await core.clearMessages(conversationId);
+    }
     return { success: true };
   });
 }

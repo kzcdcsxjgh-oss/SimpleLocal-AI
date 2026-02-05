@@ -90,7 +90,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // === Chat (conversation-based) ===
   sendMessage: (conversationId: string, message: string) =>
     ipcRenderer.invoke('chat:send', conversationId, message),
-  clearChat: () => ipcRenderer.invoke('chat:clear'),
+  clearChat: (conversationId?: string) => ipcRenderer.invoke('chat:clear', conversationId),
 
   // === Legacy Chat Session API (backwards compatibility) ===
   getChatSessions: () => ipcRenderer.invoke('chat:getSessions'),
@@ -148,7 +148,7 @@ export interface ElectronAPI {
 
   // Chat
   sendMessage: (conversationId: string, message: string) => Promise<{ success: boolean; sources?: Source[]; error?: string }>;
-  clearChat: () => Promise<{ success: boolean }>;
+  clearChat: (conversationId?: string) => Promise<{ success: boolean }>;
 
   // Legacy Chat Sessions
   getChatSessions: () => Promise<Conversation[]>;

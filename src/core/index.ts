@@ -105,20 +105,18 @@ export class Core {
   async addDocument(filePath: string): Promise<Document> {
     this.ensureInitialized();
 
+    // Process document once (hash + tekst + chunks)
+    const processed = await this.processor.process(filePath);
+
     // Check if document already exists
     const existing = await this.storage.getDocumentByPath(filePath);
     if (existing) {
-      // Check if hash changed
-      const processed = await this.processor.process(filePath);
       if (processed.hash === existing.hash) {
-        return existing; // No changes
+        return existing; // Geen wijzigingen
       }
-      // Document changed, remove old data
+      // Document gewijzigd, oude data verwijderen
       await this.storage.deleteDocument(existing.id);
     }
-
-    // Process document
-    const processed = await this.processor.process(filePath);
 
     // Store document
     const document = await this.storage.createDocument({
@@ -191,6 +189,11 @@ export class Core {
   async getMessages(conversationId: string): Promise<Message[]> {
     this.ensureInitialized();
     return this.storage.getMessagesForConversation(conversationId);
+  }
+
+  async clearMessages(conversationId: string): Promise<void> {
+    this.ensureInitialized();
+    await this.storage.deleteMessagesForConversation(conversationId);
   }
 
   // === Chat ===

@@ -12,11 +12,14 @@
 import type { ILLM, LLMConfig } from '../interfaces/llm';
 import type { Message, GenerateOptions, StreamChunk } from '../interfaces/types';
 import { LLMConnectionError } from '../interfaces/types';
+import { buildSystemPrompt, collectStream } from './helpers';
 
 const DEFAULT_CONFIG: Required<LLMConfig> = {
+  provider: 'ollama',
   baseUrl: 'http://localhost:11434',
   model: 'llama3.2',
   timeout: 120000,
+  apiKey: '',
 };
 
 export class OllamaAdapter implements ILLM {
@@ -42,7 +45,7 @@ export class OllamaAdapter implements ILLM {
     context: string,
     options?: GenerateOptions
   ): AsyncGenerator<StreamChunk> {
-    const systemPrompt = this.buildSystemPrompt(context, options?.systemPrompt);
+    const systemPrompt = buildSystemPrompt(context, options?.systemPrompt);
 
     const ollamaMessages = [
       { role: 'system', content: systemPrompt },
@@ -125,39 +128,11 @@ export class OllamaAdapter implements ILLM {
     context: string,
     options?: GenerateOptions
   ): Promise<string> {
-    const chunks: string[] = [];
-
-    for await (const chunk of this.generate(messages, context, options)) {
-      if (!chunk.done) {
-        chunks.push(chunk.content);
-      }
-    }
-
-    return chunks.join('');
+    return collectStream(this.generate(messages, context, options));
   }
 
   getConfig(): LLMConfig {
     return { ...this.config };
-  }
-
-  /**
-   * Build system prompt with document context
-   */
-  private buildSystemPrompt(context: string, customPrompt?: string): string {
-    const base = customPrompt ?? `Je bent een behulpzame assistent die vragen beantwoordt over documenten.
-Gebruik ALLEEN de informatie uit de gegeven context om te antwoorden.
-Als het antwoord niet in de context staat, zeg dat eerlijk.
-Antwoord in dezelfde taal als de vraag.`;
-
-    if (!context) {
-      return base;
-    }
-
-    return `${base}
-
---- DOCUMENT CONTEXT ---
-${context}
---- EINDE CONTEXT ---`;
   }
 }
 
