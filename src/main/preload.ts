@@ -1,25 +1,79 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// Expose protected methods that allow the renderer process to use
-// ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('electronAPI', {
-  // AI status operations
-  checkAI: () => ipcRenderer.invoke('ai:check'),
-  initializeAI: () => ipcRenderer.invoke('ai:initialize'),
+// Type definitions
+export interface AIStatus {
+  ready: boolean;
+  loading: boolean;
+  progress: number;
+  error?: string;
+}
 
-  // File dialog
+export interface Source {
+  chunkId: string;
+  documentId: string;
+  documentName: string;
+  content: string;
+  score: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: Source[];
+  createdAt?: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  documentIds: string[];
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  path: string;
+  addedAt: string;
+}
+
+export interface ChatStreamData {
+  chunk: string;
+  done: boolean;
+  sources?: Source[];
+  error?: string;
+}
+
+// Expose protected methods to renderer
+contextBridge.exposeInMainWorld('electronAPI', {
+  // === AI Status ===
+  checkAI: () => ipcRenderer.invoke('ai:check'),
+
+  // === File Dialog ===
   openFileDialog: () => ipcRenderer.invoke('dialog:openFile'),
 
-  // Document operations
+  // === Documents ===
   processDocument: (filePath: string) => ipcRenderer.invoke('document:process', filePath),
   listDocuments: () => ipcRenderer.invoke('document:list'),
   removeDocument: (documentId: string) => ipcRenderer.invoke('document:remove', documentId),
 
-  // Chat operations
-  sendMessage: (message: string) => ipcRenderer.invoke('chat:send', message),
+  // === Conversations (new API) ===
+  listConversations: () => ipcRenderer.invoke('conversation:list'),
+  getConversation: (conversationId: string) => ipcRenderer.invoke('conversation:get', conversationId),
+  createConversation: (documentIds?: string[]) => ipcRenderer.invoke('conversation:create', documentIds),
+  updateConversation: (conversationId: string, updates: { title?: string; documentIds?: string[] }) =>
+    ipcRenderer.invoke('conversation:update', conversationId, updates),
+  deleteConversation: (conversationId: string) => ipcRenderer.invoke('conversation:delete', conversationId),
+
+  // === Chat (conversation-based) ===
+  sendMessage: (conversationId: string, message: string) =>
+    ipcRenderer.invoke('chat:send', conversationId, message),
   clearChat: () => ipcRenderer.invoke('chat:clear'),
 
-  // Chat session operations
+  // === Legacy Chat Session API (backwards compatibility) ===
   getChatSessions: () => ipcRenderer.invoke('chat:getSessions'),
   getChatSession: (sessionId: string) => ipcRenderer.invoke('chat:getSession', sessionId),
   createChatSession: () => ipcRenderer.invoke('chat:createSession'),
@@ -29,68 +83,62 @@ contextBridge.exposeInMainWorld('electronAPI', {
   renameChatSession: (sessionId: string, title: string) =>
     ipcRenderer.invoke('chat:renameSession', sessionId, title),
 
-  // Event listeners
+  // === Event Listeners ===
   onAIStatus: (callback: (data: AIStatus) => void) => {
-    const subscription = (_event: any, data: any) => callback(data);
+    const subscription = (_event: Electron.IpcRendererEvent, data: AIStatus) => callback(data);
     ipcRenderer.on('ai:status', subscription);
     return () => ipcRenderer.removeListener('ai:status', subscription);
   },
 
-  onDocumentProcessing: (callback: (data: any) => void) => {
-    const subscription = (_event: any, data: any) => callback(data);
+  onDocumentProcessing: (callback: (data: { filePath: string; status: string; error?: string }) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, data: { filePath: string; status: string; error?: string }) => callback(data);
     ipcRenderer.on('document:processing', subscription);
     return () => ipcRenderer.removeListener('document:processing', subscription);
   },
 
-  onChatStream: (callback: (data: { chunk: string; done: boolean }) => void) => {
-    const subscription = (_event: any, data: any) => callback(data);
+  onChatStream: (callback: (data: ChatStreamData) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, data: ChatStreamData) => callback(data);
     ipcRenderer.on('chat:stream', subscription);
     return () => ipcRenderer.removeListener('chat:stream', subscription);
   },
 });
 
-// Type definitions
-export interface AIStatus {
-  ready: boolean;
-  loading: boolean;
-  progress: number;
-  error?: string;
-  modelName?: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: ChatMessage[];
-  createdAt: string;
-  updatedAt: string;
-}
-
+// TypeScript interface for window.electronAPI
 export interface ElectronAPI {
+  // AI
   checkAI: () => Promise<AIStatus>;
-  initializeAI: () => Promise<{ success: boolean; error?: string }>;
+
+  // File Dialog
   openFileDialog: () => Promise<{ canceled: boolean; filePaths: string[] }>;
-  processDocument: (filePath: string) => Promise<{ success: boolean; chunks?: number; error?: string }>;
-  listDocuments: () => Promise<{ id: string; name: string; path: string; addedAt: string }[]>;
-  removeDocument: (documentId: string) => Promise<{ success: boolean }>;
-  sendMessage: (message: string) => Promise<{ success: boolean; response?: string; error?: string }>;
+
+  // Documents
+  processDocument: (filePath: string) => Promise<{ success: boolean; document?: Document; error?: string }>;
+  listDocuments: () => Promise<Document[]>;
+  removeDocument: (documentId: string) => Promise<{ success: boolean; error?: string }>;
+
+  // Conversations (new)
+  listConversations: () => Promise<Omit<Conversation, 'messages'>[]>;
+  getConversation: (conversationId: string) => Promise<Conversation | null>;
+  createConversation: (documentIds?: string[]) => Promise<Conversation>;
+  updateConversation: (conversationId: string, updates: { title?: string; documentIds?: string[] }) => Promise<Omit<Conversation, 'messages'>>;
+  deleteConversation: (conversationId: string) => Promise<{ success: boolean }>;
+
+  // Chat
+  sendMessage: (conversationId: string, message: string) => Promise<{ success: boolean; sources?: Source[]; error?: string }>;
   clearChat: () => Promise<{ success: boolean }>;
-  getChatSessions: () => Promise<ChatSession[]>;
-  getChatSession: (sessionId: string) => Promise<ChatSession | null>;
-  createChatSession: () => Promise<ChatSession>;
-  updateChatSession: (sessionId: string, messages: ChatMessage[], title?: string) => Promise<ChatSession | null>;
+
+  // Legacy Chat Sessions
+  getChatSessions: () => Promise<Conversation[]>;
+  getChatSession: (sessionId: string) => Promise<Conversation | null>;
+  createChatSession: () => Promise<Conversation>;
+  updateChatSession: (sessionId: string, messages: ChatMessage[], title?: string) => Promise<Conversation | null>;
   deleteChatSession: (sessionId: string) => Promise<{ success: boolean }>;
-  renameChatSession: (sessionId: string, title: string) => Promise<ChatSession | null>;
+  renameChatSession: (sessionId: string, title: string) => Promise<Conversation | null>;
+
+  // Events
   onAIStatus: (callback: (data: AIStatus) => void) => () => void;
-  onDocumentProcessing: (callback: (data: any) => void) => () => void;
-  onChatStream: (callback: (data: { chunk: string; done: boolean }) => void) => () => void;
+  onDocumentProcessing: (callback: (data: { filePath: string; status: string; error?: string }) => void) => () => void;
+  onChatStream: (callback: (data: ChatStreamData) => void) => () => void;
 }
 
 declare global {

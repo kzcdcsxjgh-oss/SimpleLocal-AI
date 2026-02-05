@@ -1,33 +1,21 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
-import { DocumentProcessor } from './services/documentProcessor';
-import { VectorStore } from './services/vectorStore';
-import { LocalAIService } from './services/localAIService';
-import { ChatStore } from './services/chatStore';
-import {
-  validateFilePath,
-  validateMessageContent,
-  validateDocumentId
-} from './utils/validation';
+import { Core } from '../core';
+import type { Source } from '../core';
 
 let mainWindow: BrowserWindow | null = null;
-let documentProcessor: DocumentProcessor;
-let vectorStore: VectorStore;
-let localAI: LocalAIService;
-let chatStore: ChatStore;
+let core: Core;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 /**
  * Safely send IPC message to renderer
- * Handles null mainWindow and destroyed window cases
  */
 function safeSend(channel: string, ...args: unknown[]): boolean {
   if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
     mainWindow.webContents.send(channel, ...args);
     return true;
   }
-  console.warn(`Cannot send to channel '${channel}': mainWindow not available`);
   return false;
 }
 
@@ -43,11 +31,9 @@ async function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
-    // Senior-friendly: larger default size, clear window
     backgroundColor: '#ffffff',
   });
 
-  // Remove menu bar for cleaner look
   mainWindow.setMenuBarVisibility(false);
 
   if (isDev) {
@@ -62,201 +48,246 @@ async function createWindow() {
   });
 }
 
-async function initializeServices() {
+async function initializeCore() {
   const userDataPath = app.getPath('userData');
   const dataDir = path.join(userDataPath, 'simplelocal-data');
 
-  // Initialize services
-  vectorStore = new VectorStore(dataDir);
-  documentProcessor = new DocumentProcessor();
-  localAI = new LocalAIService();
-  chatStore = new ChatStore(dataDir);
+  core = new Core({ dataDir });
+  await core.initialize();
 
-  // Set up progress callback for AI initialization
-  localAI.onProgress((status) => {
-    safeSend('ai:status', status);
-  });
-
-  await vectorStore.initialize();
-  await chatStore.initialize();
-
-  // Start AI initialization in background (don't block app start)
-  localAI.initialize().catch((error) => {
-    console.error('Failed to initialize AI:', error);
+  // Check LLM status and notify renderer
+  const llmAvailable = await core.isLLMAvailable();
+  safeSend('ai:status', {
+    ready: llmAvailable,
+    loading: false,
+    progress: 100,
+    error: llmAvailable ? undefined : 'Ollama niet gevonden. Start Ollama met: ollama serve',
   });
 }
 
 // IPC Handlers
 function setupIpcHandlers() {
-  // Check AI status
+  // === AI Status ===
   ipcMain.handle('ai:check', async () => {
-    return localAI.getStatus();
+    const ready = await core.isLLMAvailable();
+    return {
+      ready,
+      loading: false,
+      progress: 100,
+      error: ready ? undefined : 'Ollama niet beschikbaar',
+    };
   });
 
-  // Manually trigger AI initialization
-  ipcMain.handle('ai:initialize', async () => {
-    try {
-      await localAI.initialize();
-      return { success: true };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return { success: false, error: errorMessage };
-    }
-  });
-
-  // Open file dialog for document selection
+  // === File Dialog ===
   ipcMain.handle('dialog:openFile', async () => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
 
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const extensions = core.getSupportedExtensions().map(ext => ext.slice(1));
+    return dialog.showOpenDialog(mainWindow, {
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Documents', extensions: ['pdf', 'txt', 'docx', 'md'] },
+        { name: 'Documents', extensions },
         { name: 'All Files', extensions: ['*'] },
       ],
     });
-
-    return result;
   });
 
-  // Process and index a document
+  // === Documents ===
   ipcMain.handle('document:process', async (_event, filePath: string) => {
     try {
-      // Validate file path before processing
-      const pathValidation = validateFilePath(filePath);
-      if (!pathValidation.valid) {
-        console.error('Invalid file path:', pathValidation.error);
-        return { success: false, error: pathValidation.error };
-      }
-
-      // Notify renderer that processing started
       safeSend('document:processing', { filePath, status: 'started' });
-
-      // Process the document into chunks
-      const chunks = await documentProcessor.processDocument(filePath);
-
-      // Generate embeddings for each chunk
-      const documentsWithEmbeddings = [];
-      for (const chunk of chunks) {
-        const embedding = await localAI.generateEmbedding(chunk.content);
-        documentsWithEmbeddings.push({
-          content: chunk.content,
-          documentPath: chunk.metadata.documentPath,
-          documentName: chunk.metadata.documentName,
-          chunkIndex: chunk.metadata.chunkIndex,
-          embedding,
-        });
-      }
-
-      // Store in vector database
-      await vectorStore.addDocuments(documentsWithEmbeddings);
-
+      const document = await core.addDocument(filePath);
       safeSend('document:processing', { filePath, status: 'completed' });
-
-      return { success: true, chunks: chunks.length };
+      return { success: true, document };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      safeSend('document:processing', {
-        filePath,
-        status: 'error',
-        error: errorMessage
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      safeSend('document:processing', { filePath, status: 'error', error: errorMessage });
       return { success: false, error: errorMessage };
     }
   });
 
-  // Get list of indexed documents
   ipcMain.handle('document:list', async () => {
-    return await vectorStore.getIndexedDocuments();
+    const documents = await core.listDocuments();
+    return documents.map(doc => ({
+      id: doc.id,
+      name: doc.name,
+      path: doc.path,
+      addedAt: doc.createdAt.toISOString(),
+    }));
   });
 
-  // Remove a document from the index
   ipcMain.handle('document:remove', async (_event, documentId: string) => {
-    // Validate document ID before removal
-    const idValidation = validateDocumentId(documentId);
-    if (!idValidation.valid) {
-      console.error('Invalid document ID:', idValidation.error);
-      return { success: false, error: idValidation.error };
-    }
-
     try {
-      await vectorStore.removeDocument(documentId);
+      await core.removeDocument(documentId);
       return { success: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
       return { success: false, error: errorMessage };
     }
   });
 
-  // Chat with documents
-  ipcMain.handle('chat:send', async (_event, message: string) => {
-    try {
-      // Validate message content before processing
-      const messageValidation = validateMessageContent(message);
-      if (!messageValidation.valid) {
-        console.error('Invalid message:', messageValidation.error);
-        return { success: false, error: messageValidation.error };
-      }
-
-      // Generate embedding for the query
-      const queryEmbedding = await localAI.generateEmbedding(message);
-
-      // Search for relevant document chunks
-      const relevantChunks = await vectorStore.search(queryEmbedding, 5);
-
-      // Build context from relevant chunks
-      let context = '';
-      if (relevantChunks.length > 0) {
-        context = relevantChunks
-          .map((chunk) => `[From: ${chunk.documentName}]\n${chunk.content}`)
-          .join('\n\n---\n\n');
-      }
-
-      // Generate response with streaming callback for real-time token output
-      const response = await localAI.generate(message, context, (chunk) => {
-        // Send each chunk as it's generated for real-time display
-        safeSend('chat:stream', { chunk, done: false });
-      });
-
-      // Send final response to signal completion
-      safeSend('chat:stream', { chunk: response, done: true });
-
-      return { success: true, response };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return { success: false, error: errorMessage };
-    }
+  // === Conversations (new API) ===
+  ipcMain.handle('conversation:list', async () => {
+    const conversations = await core.listConversations();
+    return conversations.map(conv => ({
+      id: conv.id,
+      title: conv.title,
+      documentIds: conv.documentIds,
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    }));
   });
 
-  // Clear chat history (for future implementation)
-  ipcMain.handle('chat:clear', async () => {
+  ipcMain.handle('conversation:get', async (_event, conversationId: string) => {
+    const conv = await core.getConversation(conversationId);
+    if (!conv) return null;
+
+    const messages = await core.getMessages(conversationId);
+    return {
+      id: conv.id,
+      title: conv.title,
+      documentIds: conv.documentIds,
+      messages: messages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        sources: msg.sources,
+        createdAt: msg.createdAt.toISOString(),
+      })),
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    };
+  });
+
+  ipcMain.handle('conversation:create', async (_event, documentIds?: string[]) => {
+    const conv = await core.createConversation(documentIds);
+    return {
+      id: conv.id,
+      title: conv.title,
+      documentIds: conv.documentIds,
+      messages: [],
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    };
+  });
+
+  ipcMain.handle('conversation:update', async (_event, conversationId: string, updates: { title?: string; documentIds?: string[] }) => {
+    const conv = await core.updateConversation(conversationId, updates);
+    return {
+      id: conv.id,
+      title: conv.title,
+      documentIds: conv.documentIds,
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    };
+  });
+
+  ipcMain.handle('conversation:delete', async (_event, conversationId: string) => {
+    await core.deleteConversation(conversationId);
     return { success: true };
   });
 
-  // Chat session management
+  // === Chat (new: conversation-based) ===
+  ipcMain.handle('chat:send', async (_event, conversationId: string, message: string) => {
+    try {
+      let sources: Source[] = [];
+
+      for await (const chunk of core.chat(conversationId, message)) {
+        safeSend('chat:stream', {
+          chunk: chunk.content,
+          done: chunk.done,
+          sources: chunk.sources,
+        });
+        if (chunk.sources) {
+          sources = chunk.sources;
+        }
+      }
+
+      return { success: true, sources };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      safeSend('chat:stream', { chunk: '', done: true, error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // === Legacy Chat Session Handlers (backwards compatibility) ===
   ipcMain.handle('chat:getSessions', async () => {
-    return await chatStore.getSessions();
+    const conversations = await core.listConversations();
+    return conversations.map(conv => ({
+      id: conv.id,
+      title: conv.title,
+      messages: [],
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    }));
   });
 
   ipcMain.handle('chat:getSession', async (_event, sessionId: string) => {
-    return await chatStore.getSession(sessionId);
+    const conv = await core.getConversation(sessionId);
+    if (!conv) return null;
+
+    const messages = await core.getMessages(sessionId);
+    return {
+      id: conv.id,
+      title: conv.title,
+      messages: messages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+      })),
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    };
   });
 
   ipcMain.handle('chat:createSession', async () => {
-    return await chatStore.createSession();
+    const conv = await core.createConversation();
+    return {
+      id: conv.id,
+      title: conv.title,
+      messages: [],
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    };
   });
 
-  ipcMain.handle('chat:updateSession', async (_event, sessionId: string, messages: any[], title?: string) => {
-    return await chatStore.updateSession(sessionId, messages, title);
+  ipcMain.handle('chat:updateSession', async (_event, sessionId: string, _messages: unknown[], title?: string) => {
+    if (title) {
+      const conv = await core.updateConversation(sessionId, { title });
+      const messages = await core.getMessages(sessionId);
+      return {
+        id: conv.id,
+        title: conv.title,
+        messages: messages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+        })),
+        createdAt: conv.createdAt.toISOString(),
+        updatedAt: conv.updatedAt.toISOString(),
+      };
+    }
+    return core.getConversation(sessionId);
   });
 
   ipcMain.handle('chat:deleteSession', async (_event, sessionId: string) => {
-    const success = await chatStore.deleteSession(sessionId);
-    return { success };
+    await core.deleteConversation(sessionId);
+    return { success: true };
   });
 
   ipcMain.handle('chat:renameSession', async (_event, sessionId: string, title: string) => {
-    return await chatStore.renameSession(sessionId, title);
+    const conv = await core.updateConversation(sessionId, { title });
+    return {
+      id: conv.id,
+      title: conv.title,
+      createdAt: conv.createdAt.toISOString(),
+      updatedAt: conv.updatedAt.toISOString(),
+    };
+  });
+
+  ipcMain.handle('chat:clear', async () => {
+    return { success: true };
   });
 }
 
@@ -264,7 +295,7 @@ function setupIpcHandlers() {
 app.whenReady().then(async () => {
   setupIpcHandlers();
   await createWindow();
-  await initializeServices();
+  await initializeCore();
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -280,6 +311,5 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', async () => {
-  // Cleanup resources
-  await vectorStore?.close();
+  await core?.close();
 });

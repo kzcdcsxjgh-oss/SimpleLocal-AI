@@ -5,22 +5,28 @@ interface Document {
   name: string;
   path: string;
   addedAt: string;
-  chunkCount?: number;
 }
 
 interface DocumentListProps {
   documents: Document[];
+  selectedIds?: string[];
+  onToggle?: (documentId: string) => void;
   onRemove: (documentId: string) => void;
 }
 
-const DocumentList: React.FC<DocumentListProps> = ({ documents, onRemove }) => {
+const DocumentList: React.FC<DocumentListProps> = ({
+  documents,
+  selectedIds = [],
+  onToggle,
+  onRemove,
+}) => {
   if (documents.length === 0) {
     return (
       <div className="document-list document-list--empty">
         <div className="document-list__empty-icon">📄</div>
-        <p>No documents yet</p>
+        <p>Nog geen documenten</p>
         <p style={{ fontSize: '14px', marginTop: '8px' }}>
-          Click "Add Document" to get started
+          Klik op "Document Toevoegen" om te beginnen
         </p>
       </div>
     );
@@ -28,10 +34,9 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onRemove }) => {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
+    return date.toLocaleDateString('nl-NL', {
       day: 'numeric',
-      year: 'numeric',
+      month: 'short',
     });
   };
 
@@ -54,27 +59,47 @@ const DocumentList: React.FC<DocumentListProps> = ({ documents, onRemove }) => {
 
   return (
     <div className="document-list">
-      {documents.map((doc) => (
-        <div key={doc.id} className="document-item">
-          <span className="document-item__icon">{getFileIcon(doc.name)}</span>
-          <div className="document-item__info">
-            <div className="document-item__name" title={doc.name}>
-              {doc.name}
-            </div>
-            <div className="document-item__meta">
-              Added {formatDate(doc.addedAt)}
-            </div>
-          </div>
-          <button
-            className="document-item__remove"
-            onClick={() => onRemove(doc.id)}
-            title="Remove document"
-            aria-label={`Remove ${doc.name}`}
+      {documents.map((doc) => {
+        const isSelected = selectedIds.includes(doc.id);
+        return (
+          <div
+            key={doc.id}
+            className={`document-item ${isSelected ? 'document-item--selected' : ''}`}
+            onClick={() => onToggle?.(doc.id)}
+            style={{ cursor: onToggle ? 'pointer' : 'default' }}
           >
-            ✕
-          </button>
-        </div>
-      ))}
+            {onToggle && (
+              <input
+                type="checkbox"
+                className="document-item__checkbox"
+                checked={isSelected}
+                onChange={() => onToggle(doc.id)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+            <span className="document-item__icon">{getFileIcon(doc.name)}</span>
+            <div className="document-item__info">
+              <div className="document-item__name" title={doc.name}>
+                {doc.name}
+              </div>
+              <div className="document-item__meta">
+                {formatDate(doc.addedAt)}
+              </div>
+            </div>
+            <button
+              className="document-item__remove"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(doc.id);
+              }}
+              title="Verwijder document"
+              aria-label={`Verwijder ${doc.name}`}
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 };

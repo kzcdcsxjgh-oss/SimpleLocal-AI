@@ -768,3 +768,112 @@ body {
   color: var(--error);
   background: var(--error-light);
 }
+
+/* ==========================================
+   Document Selection
+   ========================================== */
+
+.sidebar__hint {
+  font-size: var(--font-size-sm);
+  color: var(--gray-500);
+  margin-top: var(--spacing-xs);
+}
+
+.document-item__checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.document-item--selected {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+/* ==========================================
+   Source Citations in Messages
+   ========================================== */
+
+.message__sources {
+  margin-top: var(--spacing-md);
+  border-top: 1px solid var(--gray-200);
+  padding-top: var(--spacing-md);
+}
+
+.message__sources-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--gray-600);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: var(--spacing-xs) 0;
+  transition: color 0.2s;
+}
+
+.message__sources-toggle:hover {
+  color: var(--primary);
+}
+
+.message__sources-arrow {
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.message__sources-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.message__sources-list {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.message__source {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.message__source-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.message__source-number {
+  background: var(--primary);
+  color: var(--white);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.message__source-name {
+  font-weight: 500;
+  color: var(--gray-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message__source-content {
+  color: var(--gray-600);
+  line-height: 1.5;
+  font-style: italic;
+}
