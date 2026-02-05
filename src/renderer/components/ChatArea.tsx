@@ -1,9 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+interface Source {
+  chunkId: string;
+  documentId: string;
+  documentName: string;
+  content: string;
+  score: number;
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  sources?: Source[];
 }
 
 interface ChatAreaProps {
@@ -24,6 +33,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   hasDocuments,
 }) => {
   const [input, setInput] = useState('');
+  const [expandedSources, setExpandedSources] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -49,11 +59,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Submit on Enter (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const toggleSources = (messageId: string) => {
+    setExpandedSources(expandedSources === messageId ? null : messageId);
   };
 
   return (
@@ -64,12 +77,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           <div className="chat__messages--empty">
             <div className="chat__welcome-icon">💬</div>
             <h2 className="chat__welcome-title">
-              {hasDocuments ? 'Ask me about your documents!' : 'Welcome to SimpleLocal AI'}
+              {hasDocuments ? 'Stel een vraag over uw documenten!' : 'Welkom bij SimpleLocal AI'}
             </h2>
             <p className="chat__welcome-text">
               {hasDocuments
-                ? "I've read your documents and I'm ready to help. Ask me anything about them!"
-                : 'Add some documents using the button on the left, then ask me questions about them. Everything stays private on your computer.'}
+                ? 'Ik heb uw documenten gelezen en ben klaar om te helpen. Stel gerust een vraag!'
+                : 'Voeg eerst documenten toe met de knop rechts, dan kunt u vragen stellen. Alles blijft privé op uw computer.'}
             </p>
           </div>
         ) : (
@@ -92,6 +105,39 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Sources section */}
+                  {message.role === 'assistant' && message.sources && message.sources.length > 0 && (
+                    <div className="message__sources">
+                      <button
+                        className="message__sources-toggle"
+                        onClick={() => toggleSources(message.id)}
+                      >
+                        📚 {message.sources.length} bron{message.sources.length > 1 ? 'nen' : ''} gebruikt
+                        <span className={`message__sources-arrow ${expandedSources === message.id ? 'expanded' : ''}`}>
+                          ▼
+                        </span>
+                      </button>
+
+                      {expandedSources === message.id && (
+                        <div className="message__sources-list">
+                          {message.sources.map((source, index) => (
+                            <div key={source.chunkId} className="message__source">
+                              <div className="message__source-header">
+                                <span className="message__source-number">{index + 1}</span>
+                                <span className="message__source-name">{source.documentName}</span>
+                              </div>
+                              <div className="message__source-content">
+                                {source.content.length > 200
+                                  ? source.content.slice(0, 200) + '...'
+                                  : source.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -110,10 +156,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={
             isDisabled
-              ? 'Waiting for AI to initialize...'
+              ? 'Wachten op AI...'
               : hasDocuments
-              ? 'Ask me about your documents...'
-              : 'Add documents first, then ask questions...'
+              ? 'Stel een vraag over uw documenten...'
+              : 'Voeg eerst documenten toe...'
           }
           disabled={isDisabled}
           rows={1}
@@ -123,7 +169,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           className="chat__send-btn"
           disabled={isDisabled || isLoading || !input.trim()}
         >
-          {isLoading ? 'Thinking...' : 'Send'}
+          {isLoading ? 'Denken...' : 'Verstuur'}
         </button>
       </form>
     </section>
