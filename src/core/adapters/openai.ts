@@ -17,6 +17,7 @@ export interface OpenAIConfig extends LLMConfig {
 }
 
 const DEFAULT_CONFIG: Required<OpenAIConfig> = {
+  provider: 'openai',
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4o-mini',
   timeout: 120000,

@@ -14,9 +14,11 @@ import type { Message, GenerateOptions, StreamChunk } from '../interfaces/types'
 import { LLMConnectionError } from '../interfaces/types';
 
 const DEFAULT_CONFIG: Required<LLMConfig> = {
+  provider: 'ollama',
   baseUrl: 'http://localhost:11434',
   model: 'llama3.2',
   timeout: 120000,
+  apiKey: '',
 };
 
 export class OllamaAdapter implements ILLM {
