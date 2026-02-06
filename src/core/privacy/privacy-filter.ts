@@ -47,16 +47,86 @@ export class PrivacyFilter {
   }
 
   /**
+   * Normaliseer tekst: voeg spaties toe waar die ontbreken
+   * Bijv. "01:30Tom PoletGoedemiddag!" → "01:30 Tom Polet Goedemiddag!"
+   * Geeft genormaliseerde tekst + mapping terug om posities te herleiden
+   */
+  private normalizeForDetection(text: string): { normalized: string; toOriginal: number[] } {
+    const toOriginal: number[] = [];
+    let normalized = '';
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const prev = i > 0 ? text[i - 1] : '';
+
+      // Voeg spatie toe bij overgang van cijfer/kleine letter → hoofdletter
+      // Bijv. "30Tom" → "30 Tom", "PoletGoedemiddag" → "Polet Goedemiddag"
+      if (
+        i > 0 &&
+        /[A-ZÀ-Ý]/.test(ch) &&
+        (/[a-zà-ÿ]/.test(prev) || /[0-9]/.test(prev))
+      ) {
+        normalized += ' ';
+        toOriginal.push(-1); // -1 = ingevoegd teken, geen originele positie
+      }
+
+      normalized += ch;
+      toOriginal.push(i);
+    }
+
+    return { normalized, toOriginal };
+  }
+
+  /**
+   * Vertaal positie in genormaliseerde tekst terug naar originele tekst
+   */
+  private mapToOriginal(
+    start: number,
+    end: number,
+    toOriginal: number[],
+  ): { origStart: number; origEnd: number } {
+    // Zoek eerste niet-ingevoegde positie >= start
+    let origStart = start;
+    while (origStart < toOriginal.length && toOriginal[origStart] === -1) {
+      origStart++;
+    }
+    // Zoek laatste niet-ingevoegde positie < end
+    let origEnd = end - 1;
+    while (origEnd >= 0 && toOriginal[origEnd] === -1) {
+      origEnd--;
+    }
+
+    return {
+      origStart: toOriginal[origStart] ?? start,
+      origEnd: (toOriginal[origEnd] ?? origEnd) + 1,
+    };
+  }
+
+  /**
    * Filter alle persoonsgegevens uit de tekst
    */
   filter(text: string): PrivacyFilterResult {
-    // Stap 1: Detecteer alle gevoelige items
+    // Stap 0: Normaliseer tekst voor betere detectie
+    const { normalized, toOriginal } = this.normalizeForDetection(text);
+
+    // Stap 1: Detecteer alle gevoelige items in genormaliseerde tekst
     let allDetections: DetectedItem[] = [];
 
     for (const type of this.config.enabledTypes) {
-      const detections = this.detect(text, type);
+      const detections = this.detect(normalized, type);
       allDetections.push(...detections);
     }
+
+    // Stap 1b: Vertaal posities terug naar originele tekst
+    allDetections = allDetections.map(d => {
+      const { origStart, origEnd } = this.mapToOriginal(d.start, d.end, toOriginal);
+      return {
+        ...d,
+        original: text.slice(origStart, origEnd),
+        start: origStart,
+        end: origEnd,
+      };
+    });
 
     // Stap 2: Verwijder overlappende detecties (langste match wint)
     allDetections = this.resolveOverlaps(allDetections);
