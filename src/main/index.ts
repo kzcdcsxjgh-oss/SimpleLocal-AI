@@ -3,15 +3,27 @@ import path from 'path';
 import fs from 'fs';
 import { Core, LLMConfig } from '../core';
 import type { Source } from '../core';
+import { PrivacyFilter } from '../core/privacy/privacy-filter';
+import { DocumentProcessor } from '../core/document-processor';
+import type { PrivacyFilterConfig, PrivacyDataType } from '../core/privacy/types';
+import { ALL_PRIVACY_TYPES } from '../core/privacy/types';
 
 let mainWindow: BrowserWindow | null = null;
 let core: Core;
 let settingsPath: string;
+let privacyFilter: PrivacyFilter;
+let documentProcessor: DocumentProcessor;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 interface Settings {
   llm: LLMConfig;
+  privacy?: {
+    enabledTypes?: PrivacyDataType[];
+    placeholderStyle?: 'bracket' | 'redacted';
+    customNames?: string[];
+    excludeWords?: string[];
+  };
 }
 
 function loadSettings(): Settings {
@@ -87,25 +99,22 @@ async function initializeCore() {
   // Load saved settings
   const settings = loadSettings();
 
+  // Initialize privacy filter
+  privacyFilter = new PrivacyFilter({
+    enabledTypes: settings.privacy?.enabledTypes ?? [...ALL_PRIVACY_TYPES],
+    placeholderStyle: settings.privacy?.placeholderStyle ?? 'bracket',
+    customNames: settings.privacy?.customNames ?? [],
+    excludeWords: settings.privacy?.excludeWords ?? [],
+  });
+
+  // Initialize document processor
+  documentProcessor = new DocumentProcessor();
+
   core = new Core({ dataDir, llm: settings.llm });
   await core.initialize();
 
-  // Check LLM status and notify renderer
-  const llmAvailable = await core.isLLMAvailable();
-  const config = core.getLLMConfig();
-  const providerName = config.provider === 'openai' ? 'OpenAI' : 'Ollama';
-
-  safeSend('ai:status', {
-    ready: llmAvailable,
-    loading: false,
-    progress: 100,
-    error: llmAvailable
-      ? undefined
-      : config.provider === 'openai'
-        ? 'OpenAI API niet beschikbaar. Controleer je API key.'
-        : 'Ollama niet gevonden. Start Ollama met: ollama serve',
-    provider: providerName,
-  });
+  // Notify renderer that app is ready
+  safeSend('app:ready', { ready: true });
 }
 
 // IPC Handlers
@@ -302,6 +311,104 @@ function setupIpcHandlers() {
       safeSend('chat:stream', { chunk: '', done: true, error: errorMessage });
       return { success: false, error: errorMessage };
     }
+  });
+
+  // === Privacy Filter ===
+  ipcMain.handle('privacy:filter', async (_event, filePath: string) => {
+    try {
+      safeSend('privacy:progress', { filePath, status: 'extracting' });
+
+      // Extract text from document
+      const processed = await documentProcessor.process(filePath);
+      const fullText = processed.chunks.map(c => c.content).join('\n\n');
+
+      safeSend('privacy:progress', { filePath, status: 'filtering' });
+
+      // Run privacy filter
+      const result = privacyFilter.filter(fullText);
+
+      safeSend('privacy:progress', { filePath, status: 'done' });
+
+      return {
+        success: true,
+        fileName: processed.name,
+        originalText: fullText,
+        filteredText: result.filteredText,
+        matches: result.matches,
+        stats: result.stats,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      safeSend('privacy:progress', { filePath, status: 'error', error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('privacy:export', async (_event, filteredText: string, originalFileName: string) => {
+    if (!mainWindow) return { success: false, error: 'Geen venster' };
+
+    // Determine suggested file name
+    const ext = path.extname(originalFileName);
+    const base = path.basename(originalFileName, ext);
+    const suggestedName = `${base}_gefilterd.txt`;
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: suggestedName,
+      filters: [
+        { name: 'Tekstbestand', extensions: ['txt'] },
+        { name: 'Alle bestanden', extensions: ['*'] },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, canceled: true };
+    }
+
+    try {
+      fs.writeFileSync(result.filePath, filteredText, 'utf-8');
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('privacy:getSettings', async () => {
+    const settings = loadSettings();
+    return {
+      enabledTypes: settings.privacy?.enabledTypes ?? [...ALL_PRIVACY_TYPES],
+      placeholderStyle: settings.privacy?.placeholderStyle ?? 'bracket',
+      customNames: settings.privacy?.customNames ?? [],
+      excludeWords: settings.privacy?.excludeWords ?? [],
+    };
+  });
+
+  ipcMain.handle('privacy:setSettings', async (_event, privacySettings: PrivacyFilterConfig) => {
+    const settings = loadSettings();
+    settings.privacy = {
+      enabledTypes: privacySettings.enabledTypes,
+      placeholderStyle: privacySettings.placeholderStyle,
+      customNames: privacySettings.customNames,
+      excludeWords: privacySettings.excludeWords,
+    };
+    saveSettings(settings);
+
+    // Update the live filter instance
+    privacyFilter.updateConfig(privacySettings);
+
+    return { success: true };
+  });
+
+  ipcMain.handle('privacy:openFile', async () => {
+    if (!mainWindow) return { canceled: true, filePaths: [] };
+
+    return dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Documenten', extensions: ['pdf', 'docx', 'txt', 'md'] },
+        { name: 'Alle bestanden', extensions: ['*'] },
+      ],
+    });
   });
 
   // === Legacy Chat Session Handlers (backwards compatibility) ===
