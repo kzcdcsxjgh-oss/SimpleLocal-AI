@@ -25,16 +25,24 @@ interface DetectedName {
 }
 
 // Woorden die niet als naam behandeld moeten worden, ook al staan ze in de lijst
-const COMMON_WORDS = new Set([
+// (case-insensitive check via isCommonWord helper)
+const COMMON_WORDS_LIST = [
   'er', 'en', 'de', 'het', 'een', 'van', 'in', 'is', 'op', 'te', 'aan',
   'met', 'als', 'bij', 'dit', 'dat', 'wat', 'wie', 'wel', 'nog', 'kan',
   'ook', 'dan', 'ben', 'heb', 'zal', 'tot', 'uit', 'voor', 'niet',
   'maar', 'zijn', 'haar', 'hem', 'hun', 'zij', 'wij', 'hij', 'ons',
   'door', 'over', 'naar', 'meer', 'veel', 'goed', 'heel', 'alle',
-  'Den', 'Berg', 'Meer', 'Hal', 'Groot', 'Klein', 'Kort', 'Lang',
+  'den', 'berg', 'hal', 'groot', 'klein', 'kort', 'lang',
   // Maanden die als naam verward kunnen worden
-  'Mei',
-]);
+  'mei',
+  // Veelvoorkomende woorden aan begin van zinnen
+  'hoe', 'die', 'dus', 'hier', 'daar', 'toen', 'toch', 'waar',
+];
+const COMMON_WORDS = new Set(COMMON_WORDS_LIST);
+
+function isCommonWord(word: string): boolean {
+  return COMMON_WORDS.has(word.toLowerCase());
+}
 
 export class NameDetector {
   private firstNameSet: Set<string>;
@@ -113,12 +121,14 @@ export class NameDetector {
 
   /**
    * Methode 2: Detecteer "Voornaam (tussenvoegsel) Achternaam" patronen
+   * Ondersteunt ook samengestelde voornamen zoals "Klaas-Jan"
    */
   private detectFullNames(text: string): DetectedName[] {
     const results: DetectedName[] = [];
 
     // Zoek naar woorden die beginnen met een hoofdletter
-    const wordPattern = /\b([A-ZÀ-ÿ][a-zà-ÿ]+)\b/g;
+    // Gebruik flexibelere grenzen: ook na cijfers of begin van tekst
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)(?=[\s.,;:!?()"']|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -126,10 +136,12 @@ export class NameDetector {
       const pos = match.index;
 
       // Skip veelvoorkomende woorden
-      if (COMMON_WORDS.has(word)) continue;
+      if (isCommonWord(word)) continue;
 
-      // Check of dit een bekende voornaam is
-      if (this.firstNameSet.has(word)) {
+      // Check of dit een bekende voornaam is (ook samengestelde: "Klaas-Jan")
+      const isKnownFirstName = this.isKnownFirstName(word);
+
+      if (isKnownFirstName) {
         // Kijk wat er na de voornaam komt
         const afterFirst = text.slice(pos + word.length);
         const fullName = this.tryExtendToFullName(word, afterFirst);
@@ -151,6 +163,22 @@ export class NameDetector {
   }
 
   /**
+   * Check of een woord (inclusief samengestelde namen) een bekende voornaam is
+   * "Jan" → true, "Klaas-Jan" → true (als "Klaas" of "Jan" bekend is)
+   */
+  private isKnownFirstName(word: string): boolean {
+    if (this.firstNameSet.has(word)) return true;
+
+    // Check samengestelde voornamen: "Klaas-Jan" → check "Klaas" en "Jan"
+    if (word.includes('-')) {
+      const parts = word.split('-');
+      return parts.every(part => this.firstNameSet.has(part));
+    }
+
+    return false;
+  }
+
+  /**
    * Methode 3: Detecteer namen in context-gevoelige posities
    * Bijv. na "Naam:", komma-gescheiden lijsten, etc.
    */
@@ -158,7 +186,7 @@ export class NameDetector {
     const results: DetectedName[] = [];
 
     // Patroon: initialen + achternaam, bijv. "J. de Vries", "A.B. Bakker"
-    const initialPattern = /\b([A-Z]\.\s?(?:[A-Z]\.\s?)*)((?:(?:van|de|den|der|het|'t|te|ten|ter)\s+)*[A-Z][a-zà-ÿ]+)\b/g;
+    const initialPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-Z]\.\s?(?:[A-Z]\.\s?)*)((?:(?:van|de|den|der|het|'t|te|ten|ter)\s+)*[A-Z][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/gm;
     let match;
 
     while ((match = initialPattern.exec(text)) !== null) {
@@ -181,18 +209,18 @@ export class NameDetector {
    * Bijv. "Jan van den Berg" of "Marie de Vries"
    */
   private extractNameAtPosition(text: string): string | null {
-    // Probeer: Voornaam (tussenvoegsel) Achternaam
-    const namePattern = /^([A-ZÀ-ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-ÿ][a-zà-ÿ]+)?)\s+((?:(?:van|de|den|der|het|'t|te|ten|ter|in|op|aan|bij|uit|voor|over|onder|tot)\s+)*[A-ZÀ-ÿ][a-zà-ÿ]+)/;
+    // Probeer: Voornaam(-Voornaam) (tussenvoegsel) Achternaam
+    const namePattern = /^([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*(?:\s+[A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)?)\s+((?:(?:van|de|den|der|het|'t|te|ten|ter|in|op|aan|bij|uit|voor|over|onder|tot)\s+)*[A-ZÀ-ÿ][a-zà-ÿ]+)/;
     const simpleMatch = namePattern.exec(text);
     if (simpleMatch) {
       return simpleMatch[0];
     }
 
-    // Probeer: enkel een naam met hoofdletter
-    const singleMatch = /^([A-ZÀ-ÿ][a-zà-ÿ]{2,})/.exec(text);
+    // Probeer: enkel een naam met hoofdletter (inclusief samengesteld)
+    const singleMatch = /^([A-ZÀ-ÿ][a-zà-ÿ]{2,}(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)/.exec(text);
     if (singleMatch) {
       const word = singleMatch[1];
-      if (this.firstNameSet.has(word) || this.lastNameSet.has(word)) {
+      if (this.isKnownFirstName(word) || this.lastNameSet.has(word)) {
         return word;
       }
     }
@@ -208,7 +236,7 @@ export class NameDetector {
     // Check voor tussenvoegsel + achternaam
     for (const prefix of this.prefixPatterns) {
       const prefixPattern = new RegExp(
-        `^\\s+${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+([A-ZÀ-ÿ][a-zà-ÿ]+)`,
+        `^\\s+${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\\s.,;:!?()"']|$)`,
         'i'
       );
       const match = prefixPattern.exec(remaining);
@@ -217,12 +245,23 @@ export class NameDetector {
       }
     }
 
-    // Check voor directe achternaam (hoofdletter)
-    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ]+)/.exec(remaining);
+    // Check voor directe achternaam (hoofdletter), gevolgd door woordgrens
+    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/.exec(remaining);
     if (directMatch) {
       const possibleLastName = directMatch[1];
-      if (this.lastNameSet.has(possibleLastName) && !COMMON_WORDS.has(possibleLastName)) {
+      if ((this.lastNameSet.has(possibleLastName) || this.isLikelySurname(possibleLastName)) && !isCommonWord(possibleLastName)) {
         return `${firstName}${directMatch[0]}`;
+      }
+
+      // Check voor samengestelde achternaam: bijv. "Klein Wassink"
+      // Als het eerste woord een common word is maar in de achternaamlijst staat,
+      // kijk of er nog een achternaam volgt
+      if (isCommonWord(possibleLastName) && this.lastNameSet.has(possibleLastName)) {
+        const afterCompound = remaining.slice(directMatch[0].length);
+        const secondPart = /^\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/.exec(afterCompound);
+        if (secondPart && (this.lastNameSet.has(secondPart[1]) || this.isLikelySurname(secondPart[1]))) {
+          return `${firstName}${directMatch[0]}${secondPart[0]}`;
+        }
       }
     }
 
@@ -235,7 +274,7 @@ export class NameDetector {
    */
   private isLikelySurname(word: string): boolean {
     if (word.length < 3) return false;
-    if (COMMON_WORDS.has(word)) return false;
+    if (isCommonWord(word)) return false;
 
     // Typische Nederlandse achternaam-achtervoegsels
     const suffixes = ['man', 'stra', 'sma', 'ema', 'inga', 'ink', 'sen', 'ssen', 'berg', 'dijk', 'meer', 'veld'];
