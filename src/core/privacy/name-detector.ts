@@ -74,21 +74,40 @@ export class NameDetector {
 
   /**
    * Detecteer namen in de tekst
+   *
+   * Twee-pass strategie (best practice: entity propagation):
+   *   Pass 1-3: Detecteer volledige namen (hoge betrouwbaarheid)
+   *   Pass 4:   Entity propagation — zoek losse vermeldingen van al-gevonden namen
+   *   Pass 5:   Contextuele detectie — herken losse voornamen in Nederlands taalpatroon
    */
   detect(text: string): DetectedName[] {
-    const results: DetectedName[] = [];
+    // === Pass 1-3: Volledige namen detecteren ===
+    const fullNameResults: DetectedName[] = [];
 
     // Methode 1: Namen na indicatoren (hoogste betrouwbaarheid)
-    results.push(...this.detectAfterIndicators(text));
+    fullNameResults.push(...this.detectAfterIndicators(text));
 
     // Methode 2: Bekende voornaam + (tussenvoegsel +) achternaam combinaties
-    results.push(...this.detectFullNames(text));
+    fullNameResults.push(...this.detectFullNames(text));
 
-    // Methode 3: Alleenstaande voornamen in verdachte context
-    results.push(...this.detectContextualNames(text));
+    // Methode 3: Initialen + achternaam patronen
+    fullNameResults.push(...this.detectContextualNames(text));
 
-    // Verwijder duplicaten en overlaps
-    return this.deduplicateNames(results);
+    // Dedup voor we verdergaan
+    const confirmedNames = this.deduplicateNames(fullNameResults);
+
+    // === Pass 4: Entity propagation ===
+    // Zoek losse vermeldingen van voor-/achternamen die al als volledige naam gevonden zijn
+    const propagated = this.detectPropagatedNames(text, confirmedNames);
+
+    // === Pass 5: Contextuele standalone voornamen ===
+    // Herken bekende voornamen in Nederlands taalpatronen
+    // (bijv. "Christa, die komt" / "met Agnes" / "Agnes is")
+    const allSoFar = this.deduplicateNames([...confirmedNames, ...propagated]);
+    const contextual = this.detectStandaloneFirstNames(text, allSoFar);
+
+    // Finale deduplicatie
+    return this.deduplicateNames([...allSoFar, ...contextual]);
   }
 
   /**
@@ -266,6 +285,146 @@ export class NameDetector {
     }
 
     return null;
+  }
+
+  // === Pass 4 & 5: Entity propagation en contextuele detectie ===
+
+  /**
+   * Pass 4: Entity propagation
+   *
+   * Als "Tom Polet" gevonden is, zoek dan alle losse vermeldingen van "Tom"
+   * en "Polet" in de rest van de tekst. Dit is de standaard aanpak van
+   * tools zoals Microsoft Presidio en NetOwl (co-reference resolution).
+   */
+  private detectPropagatedNames(text: string, confirmedNames: DetectedName[]): DetectedName[] {
+    const results: DetectedName[] = [];
+    const components = this.extractNameComponents(confirmedNames);
+
+    for (const name of components) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(
+        `(?:^|(?<=[\\s.,;:!?()"']))${escaped}(?=[\\s.,;:!?()"']|$)`,
+        'gm'
+      );
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        const start = match.index;
+        const end = start + name.length;
+
+        // Sla over als deze positie al gedekt is
+        if (this.isPositionCovered(start, end, confirmedNames, results)) continue;
+
+        results.push({
+          original: name,
+          type: 'name',
+          start,
+          end,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Extraheer losse naamonderdelen uit gevonden volledige namen
+   * "Tom Polet" → {"Tom", "Polet"}
+   * "Klaas-Jan Burgler" → {"Klaas-Jan", "Burgler"}
+   * "Christa Klein Wassink" → {"Christa", "Wassink"}
+   */
+  private extractNameComponents(detections: DetectedName[]): Set<string> {
+    const components = new Set<string>();
+
+    for (const det of detections) {
+      const parts = det.original.split(/\s+/);
+      if (parts.length < 2) continue;
+
+      // Voornaam (eerste deel, evt. samengesteld)
+      const firstName = parts[0];
+      if (firstName.length >= 2 && /^[A-ZÀ-ÿ]/.test(firstName) && !isCommonWord(firstName)) {
+        components.add(firstName);
+      }
+
+      // Achternaam (laatste deel)
+      const lastName = parts[parts.length - 1];
+      if (lastName.length >= 2 && /^[A-ZÀ-ÿ]/.test(lastName) && !isCommonWord(lastName)) {
+        components.add(lastName);
+      }
+    }
+
+    return components;
+  }
+
+  /**
+   * Pass 5: Contextuele standalone voornamen
+   *
+   * Detecteer bekende voornamen die in typisch Nederlands taalgebruik
+   * voorkomen, zelfs als ze niet eerder als volledige naam gevonden zijn.
+   *
+   * Patronen:
+   *   A: "Christa, die komt ook"      (naam + komma + betrekkelijk vnw / werkwoord)
+   *   B: "met Agnes" / "voor Christa" (voorzetsel + naam)
+   *   C: "Agnes is er ook"            (naam + werkwoord)
+   */
+  private detectStandaloneFirstNames(text: string, existingDetections: DetectedName[]): DetectedName[] {
+    const results: DetectedName[] = [];
+
+    const CONTEXT_AFTER_COMMA = /^,\s+(?:die|dat|deze|zij|hij|haar|zijn|we|ze|onze|ons|de|het|komt|gaat|wil|kan|moet|heeft|had|was|is|zal|wordt|zei|zegt)\b/i;
+    const PREPOSITION_BEFORE = /(?:met|voor|bij|aan|over|naar|door|tegen|zonder|volgens|namens|behalve)\s+$/i;
+    const VERB_AFTER = /^\s+(?:is|was|heeft|had|wordt|werd|kan|kon|zal|zou|moet|moest|wil|wilde|gaat|ging|komt|kwam|lijkt|blijft|staat|zit|loopt|zei|zegt|vindt|vond|doet|deed|mag|mocht)\b/i;
+
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)(?=[\s.,;:!?()"']|$)/gm;
+    let match;
+
+    while ((match = wordPattern.exec(text)) !== null) {
+      const word = match[1];
+      const pos = match.index;
+
+      if (!this.isKnownFirstName(word)) continue;
+      if (isCommonWord(word)) continue;
+      if (this.isPositionCovered(pos, pos + word.length, existingDetections, results)) continue;
+
+      const afterWord = text.slice(pos + word.length);
+      const beforeWord = text.slice(Math.max(0, pos - 20), pos);
+
+      // Patroon A: "Naam, die/dat/zij/..."
+      if (CONTEXT_AFTER_COMMA.test(afterWord)) {
+        results.push({ original: word, type: 'name', start: pos, end: pos + word.length });
+        continue;
+      }
+
+      // Patroon B: "met/voor/bij/... Naam"
+      if (PREPOSITION_BEFORE.test(beforeWord)) {
+        results.push({ original: word, type: 'name', start: pos, end: pos + word.length });
+        continue;
+      }
+
+      // Patroon C: "Naam is/was/heeft/..."
+      if (VERB_AFTER.test(afterWord)) {
+        results.push({ original: word, type: 'name', start: pos, end: pos + word.length });
+        continue;
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Check of een positie al gedekt is door een bestaande detectie
+   */
+  private isPositionCovered(
+    start: number,
+    end: number,
+    ...detectionSets: DetectedName[][]
+  ): boolean {
+    for (const detections of detectionSets) {
+      for (const d of detections) {
+        // Overlap: niet (end <= d.start || start >= d.end)
+        if (start < d.end && end > d.start) return true;
+      }
+    }
+    return false;
   }
 
   /**

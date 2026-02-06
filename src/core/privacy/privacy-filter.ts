@@ -142,18 +142,28 @@ export class PrivacyFilter {
     allDetections.sort((a, b) => a.start - b.start);
 
     // Stap 5: Genereer placeholders en vervang
+    // Entity mapping voor namen: zelfde persoon → zelfde placeholder-nummer
     const counters: Record<string, number> = {};
+    const nameEntities: { fullName: string; num: number }[] = [];
     const matches: PrivacyMatch[] = [];
     let filteredText = text;
     let offset = 0;
 
     for (const detection of allDetections) {
-      counters[detection.type] = (counters[detection.type] || 0) + 1;
-      const num = String(counters[detection.type]).padStart(3, '0');
+      let num: number;
+
+      if (detection.type === 'name') {
+        num = this.getNameEntityNumber(detection.original, nameEntities, counters);
+      } else {
+        counters[detection.type] = (counters[detection.type] || 0) + 1;
+        num = counters[detection.type];
+      }
+
+      const numStr = String(num).padStart(3, '0');
 
       const placeholder = this.config.placeholderStyle === 'redacted'
         ? '█'.repeat(detection.original.length)
-        : `[${detection.type.toUpperCase()}-${num}]`;
+        : `[${detection.type.toUpperCase()}-${numStr}]`;
 
       const adjustedStart = detection.start + offset;
       const adjustedEnd = detection.end + offset;
@@ -439,6 +449,51 @@ export class PrivacyFilter {
    */
   private detectNames(text: string): DetectedItem[] {
     return this.nameDetector.detect(text);
+  }
+
+  // === Entity mapping ===
+
+  /**
+   * Bepaal het placeholder-nummer voor een naam.
+   * Als "Tom" al gezien is als onderdeel van "Tom Polet", krijgt het hetzelfde nummer.
+   * Dit volgt de NetOwl/Presidio co-reference best practice.
+   */
+  private getNameEntityNumber(
+    name: string,
+    entities: { fullName: string; num: number }[],
+    counters: Record<string, number>,
+  ): number {
+    const nameLower = name.toLowerCase();
+
+    for (const entity of entities) {
+      const entityLower = entity.fullName.toLowerCase();
+
+      // Exacte match
+      if (entityLower === nameLower) return entity.num;
+
+      // "Tom" is onderdeel van "Tom Polet" (voornaam)
+      if (entityLower.startsWith(nameLower + ' ')) return entity.num;
+
+      // "Polet" is onderdeel van "Tom Polet" (achternaam)
+      if (entityLower.endsWith(' ' + nameLower)) return entity.num;
+
+      // "Tom Polet" bevat "Tom" of "Polet" als woorddeel
+      const entityParts = entityLower.split(/\s+/);
+      const nameParts = nameLower.split(/\s+/);
+      if (nameParts.length === 1 && entityParts.includes(nameParts[0])) return entity.num;
+
+      // Omgekeerd: "Tom Polet" is een langere variant van eerder gezien "Tom"
+      if (nameLower.startsWith(entityLower + ' ')) {
+        entity.fullName = name; // Upgrade naar langere vorm
+        return entity.num;
+      }
+    }
+
+    // Nieuw entity
+    counters['name'] = (counters['name'] || 0) + 1;
+    const num = counters['name'];
+    entities.push({ fullName: name, num });
+    return num;
   }
 
   // === Hulpmethoden ===
