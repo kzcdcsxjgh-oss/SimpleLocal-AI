@@ -62,6 +62,40 @@ export interface ChatStreamData {
   error?: string;
 }
 
+export type PrivacyDataType =
+  | 'bsn' | 'date' | 'name' | 'iban'
+  | 'email' | 'phone' | 'postcode' | 'address';
+
+export interface PrivacyFilterSettings {
+  enabledTypes?: PrivacyDataType[];
+  placeholderStyle?: 'bracket' | 'redacted';
+  customNames?: string[];
+  excludeWords?: string[];
+}
+
+export interface PrivacyMatch {
+  placeholder: string;
+  original: string;
+  type: PrivacyDataType;
+  startOffset: number;
+  endOffset: number;
+}
+
+export interface PrivacyStats {
+  counts: Record<PrivacyDataType, number>;
+  total: number;
+}
+
+export interface PrivacyFilterResult {
+  success: boolean;
+  fileName?: string;
+  originalText?: string;
+  filteredText?: string;
+  matches?: PrivacyMatch[];
+  stats?: PrivacyStats;
+  error?: string;
+}
+
 // Expose protected methods to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   // === AI Status ===
@@ -102,7 +136,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   renameChatSession: (sessionId: string, title: string) =>
     ipcRenderer.invoke('chat:renameSession', sessionId, title),
 
+  // === Privacy Filter ===
+  privacyFilter: (filePath: string) => ipcRenderer.invoke('privacy:filter', filePath),
+  privacyExport: (filteredText: string, originalFileName: string) =>
+    ipcRenderer.invoke('privacy:export', filteredText, originalFileName),
+  privacyGetSettings: () => ipcRenderer.invoke('privacy:getSettings'),
+  privacySetSettings: (settings: PrivacyFilterSettings) =>
+    ipcRenderer.invoke('privacy:setSettings', settings),
+  privacyOpenFile: () => ipcRenderer.invoke('privacy:openFile'),
+
   // === Event Listeners ===
+  onAppReady: (callback: (data: { ready: boolean }) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, data: { ready: boolean }) => callback(data);
+    ipcRenderer.on('app:ready', subscription);
+    return () => ipcRenderer.removeListener('app:ready', subscription);
+  },
+
+  onPrivacyProgress: (callback: (data: { filePath: string; status: string; error?: string }) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, data: { filePath: string; status: string; error?: string }) => callback(data);
+    ipcRenderer.on('privacy:progress', subscription);
+    return () => ipcRenderer.removeListener('privacy:progress', subscription);
+  },
+
   onAIStatus: (callback: (data: AIStatus) => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, data: AIStatus) => callback(data);
     ipcRenderer.on('ai:status', subscription);
@@ -158,7 +213,16 @@ export interface ElectronAPI {
   deleteChatSession: (sessionId: string) => Promise<{ success: boolean }>;
   renameChatSession: (sessionId: string, title: string) => Promise<Conversation | null>;
 
+  // Privacy Filter
+  privacyFilter: (filePath: string) => Promise<PrivacyFilterResult>;
+  privacyExport: (filteredText: string, originalFileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+  privacyGetSettings: () => Promise<PrivacyFilterSettings>;
+  privacySetSettings: (settings: PrivacyFilterSettings) => Promise<{ success: boolean }>;
+  privacyOpenFile: () => Promise<{ canceled: boolean; filePaths: string[] }>;
+
   // Events
+  onAppReady: (callback: (data: { ready: boolean }) => void) => () => void;
+  onPrivacyProgress: (callback: (data: { filePath: string; status: string; error?: string }) => void) => () => void;
   onAIStatus: (callback: (data: AIStatus) => void) => () => void;
   onDocumentProcessing: (callback: (data: { filePath: string; status: string; error?: string }) => void) => () => void;
   onChatStream: (callback: (data: ChatStreamData) => void) => () => void;
