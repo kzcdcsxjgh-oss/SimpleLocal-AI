@@ -136,19 +136,48 @@ export const DUTCH_PREFIXES: string[] = [
  * Aanspreekvormen die aangeven dat een naam volgt
  */
 export const NAME_INDICATORS: string[] = [
+  // Titels en aanspreekvormen
   'Dhr.', 'Dhr', 'Mevr.', 'Mevr', 'Mw.', 'Mw',
   'de heer', 'mevrouw', 'meneer',
   'Dr.', 'Dr', 'Prof.', 'Prof', 'Mr.', 'Mr', 'Ir.', 'Ir',
   'Ing.', 'Ing', 'Ds.', 'Ds',
+
+  // Velden
   'Naam:', 'naam:', 'Name:', 'name:',
   'Geachte', 'Beste',
   'geb.', 'geboren',
+
+  // Juridisch / administratief
   'namens', 'ondertekend door', 'ondertekend',
   't.a.v.', 'ter attentie van', 'T.a.v.',
+
+  // Rollen (zorg en organisatie)
   'contactpersoon', 'Contactpersoon',
   'behandelaar', 'Behandelaar',
   'patiënt', 'Patiënt', 'patient', 'Patient',
   'cliënt', 'Cliënt', 'client', 'Client',
   'bewoner', 'Bewoner',
   'verzekerde', 'Verzekerde',
+  'mantelzorger', 'Mantelzorger',
+  'begeleider', 'Begeleider',
+  'verpleegkundige', 'Verpleegkundige',
+  'verzorgende', 'Verzorgende',
+  'hulpverlener', 'Hulpverlener',
+  'zorgverlener', 'Zorgverlener',
+  'medewerker', 'Medewerker',
+  'collega', 'Collega',
+  'huisarts', 'Huisarts',
+  'specialist', 'Specialist',
+  'arts', 'Arts',
+  'therapeut', 'Therapeut',
+  'psycholoog', 'Psycholoog',
+  'wijkverpleegkundige', 'Wijkverpleegkundige',
+  'casemanager', 'Casemanager',
+
+  // Relatie-aanduidingen
+  'dhr.', 'mevr.',
+  'partner van', 'echtgenoot van', 'echtgenote van',
+  'zoon van', 'dochter van',
+  'vader van', 'moeder van',
+  'broer van', 'zus van',
 ];
