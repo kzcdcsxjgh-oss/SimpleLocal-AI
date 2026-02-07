@@ -47,34 +47,110 @@ export class PrivacyFilter {
   }
 
   /**
-   * Normaliseer tekst: voeg spaties toe waar die ontbreken
-   * Bijv. "01:30Tom PoletGoedemiddag!" → "01:30 Tom Polet Goedemiddag!"
-   * Geeft genormaliseerde tekst + mapping terug om posities te herleiden
+   * Pre-normalisatie voor OCR- en PDF-artefacten.
+   * Bouwt een karakter-voor-karakter mapping van genormaliseerde posities
+   * terug naar originele posities, zodat detectieresultaten correct
+   * terugvertaald kunnen worden.
+   *
+   * Stappen:
+   * 1. Verwijder onzichtbare tekens (soft hyphens, zero-width chars)
+   * 2. Herstel OCR-afbrekingen: "Varen-\nkamp" → "Varenkamp"
+   * 3. Normaliseer whitespace (tabs, NBSP → spatie, herhaalde spaties)
+   * 4. Voeg spaties toe bij case-overgangen: "30Tom" → "30 Tom"
    */
   private normalizeForDetection(text: string): { normalized: string; toOriginal: number[] } {
+    // Stap 1-3: OCR-normalisatie met positie-tracking
+    const { cleaned, cleanedToOrig } = this.preNormalizeOCR(text);
+
+    // Stap 4: Spatie-injectie bij case-overgangen
     const toOriginal: number[] = [];
     let normalized = '';
 
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      const prev = i > 0 ? text[i - 1] : '';
+    for (let i = 0; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      const prev = i > 0 ? cleaned[i - 1] : '';
 
-      // Voeg spatie toe bij overgang van cijfer/kleine letter → hoofdletter
-      // Bijv. "30Tom" → "30 Tom", "PoletGoedemiddag" → "Polet Goedemiddag"
       if (
         i > 0 &&
         /[A-ZÀ-Ý]/.test(ch) &&
         (/[a-zà-ÿ]/.test(prev) || /[0-9]/.test(prev))
       ) {
         normalized += ' ';
-        toOriginal.push(-1); // -1 = ingevoegd teken, geen originele positie
+        toOriginal.push(-1);
       }
 
       normalized += ch;
-      toOriginal.push(i);
+      toOriginal.push(cleanedToOrig[i]);
     }
 
     return { normalized, toOriginal };
+  }
+
+  /**
+   * Bouw een genormaliseerde tekst met posities terug naar origineel.
+   * Verwijdert onzichtbare tekens, herstelt afbrekingen, normaliseert whitespace.
+   */
+  private preNormalizeOCR(text: string): { cleaned: string; cleanedToOrig: number[] } {
+    let cleaned = '';
+    const cleanedToOrig: number[] = [];
+
+    // Set van onzichtbare tekens om te verwijderen
+    const INVISIBLE = new Set(['\u00AD', '\u200B', '\u200C', '\u200D', '\uFEFF']);
+
+    let i = 0;
+    while (i < text.length) {
+      const ch = text[i];
+
+      // Verwijder onzichtbare tekens (skip, geen output)
+      if (INVISIBLE.has(ch)) {
+        i++;
+        continue;
+      }
+
+      // Herstel woordafbreking: "a-\n  b" → "ab" (alleen kleine letter - newline - kleine letter)
+      if (
+        ch === '-' &&
+        i > 0 && /[a-zà-ÿ]/.test(text[i - 1])
+      ) {
+        // Kijk of er whitespace+newline+whitespace+kleine letter volgt
+        let j = i + 1;
+        while (j < text.length && (text[j] === ' ' || text[j] === '\t')) j++;
+        if (j < text.length && text[j] === '\n') {
+          j++;
+          while (j < text.length && (text[j] === ' ' || text[j] === '\t')) j++;
+          if (j < text.length && /[a-zà-ÿ]/.test(text[j])) {
+            // Afbreking gevonden — sla het koppelteken en whitespace over
+            i = j;
+            continue;
+          }
+        }
+      }
+
+      // Normaliseer tabs en NBSP naar gewone spatie
+      if (ch === '\t' || ch === '\u00A0') {
+        // Sla herhaalde spaties over
+        if (cleaned.length > 0 && cleaned[cleaned.length - 1] === ' ') {
+          i++;
+          continue;
+        }
+        cleaned += ' ';
+        cleanedToOrig.push(i);
+        i++;
+        continue;
+      }
+
+      // Sla herhaalde spaties over
+      if (ch === ' ' && cleaned.length > 0 && cleaned[cleaned.length - 1] === ' ') {
+        i++;
+        continue;
+      }
+
+      cleaned += ch;
+      cleanedToOrig.push(i);
+      i++;
+    }
+
+    return { cleaned, cleanedToOrig };
   }
 
   /**
