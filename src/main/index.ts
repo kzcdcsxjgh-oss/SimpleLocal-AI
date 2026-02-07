@@ -68,7 +68,7 @@ async function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'SimpleLocal AI',
+    title: 'MakeItPrivate',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -93,7 +93,7 @@ async function createWindow() {
 
 async function initializeCore() {
   const userDataPath = app.getPath('userData');
-  const dataDir = path.join(userDataPath, 'simplelocal-data');
+  const dataDir = path.join(userDataPath, 'makeitprivate-data');
   settingsPath = path.join(userDataPath, 'settings.json');
 
   // Load saved settings

@@ -1,5 +1,5 @@
 /**
- * Core types voor SimpleLocal AI
+ * Core types voor MakeItPrivate
  * Geen dependencies, pure data structuren
  */
 

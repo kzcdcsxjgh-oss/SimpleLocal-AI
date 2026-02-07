@@ -1,5 +1,5 @@
 /**
- * SimpleLocal AI Core
+ * MakeItPrivate Core
  *
  * Framework-agnostische core library.
  * Kan gebruikt worden vanuit Electron, Tauri, CLI, of tests.
@@ -49,7 +49,7 @@ export class Core {
   private initialized = false;
 
   constructor(private config: CoreConfig) {
-    const dbPath = path.join(config.dataDir, 'simplelocal.db');
+    const dbPath = path.join(config.dataDir, 'makeitprivate.db');
     this.storage = new SQLiteStorage(dbPath);
     this.searchEngine = new FTS5Search(this.storage);
     this.llm = this.createLLMAdapter(config.llm);

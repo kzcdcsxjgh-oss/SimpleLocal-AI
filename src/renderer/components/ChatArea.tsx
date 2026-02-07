@@ -77,7 +77,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           <div className="chat__messages--empty">
             <div className="chat__welcome-icon">💬</div>
             <h2 className="chat__welcome-title">
-              {hasDocuments ? 'Stel een vraag over uw documenten!' : 'Welkom bij SimpleLocal AI'}
+              {hasDocuments ? 'Stel een vraag over uw documenten!' : 'Welkom bij MakeItPrivate'}
             </h2>
             <p className="chat__welcome-text">
               {hasDocuments

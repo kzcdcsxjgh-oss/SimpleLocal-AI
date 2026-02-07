@@ -1,9 +1,9 @@
 {
-  "name": "simplelocal-ai",
+  "name": "makeitprivate",
   "version": "1.0.16",
   "description": "A local desktop application for chatting with documents - 100% offline, 100% private",
   "main": "dist/main/index.js",
-  "author": "SimpleLocal AI Team",
+  "author": "MakeItPrivate Team",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -40,8 +40,8 @@
     "vite": "^6.0.0"
   },
   "build": {
-    "appId": "com.simplelocal.ai",
-    "productName": "SimpleLocal AI",
+    "appId": "com.makeitprivate.app",
+    "productName": "MakeItPrivate",
     "directories": {
       "output": "release"
     },
@@ -56,7 +56,7 @@
     "nsis": {
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SimpleLocal AI"
+      "shortcutName": "MakeItPrivate"
     },
     "win": {
       "target": [

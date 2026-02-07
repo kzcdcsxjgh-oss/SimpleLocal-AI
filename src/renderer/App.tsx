@@ -31,7 +31,7 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="header">
         <div>
-          <h1 className="header__title">SimpleLocal AI</h1>
+          <h1 className="header__title">MakeItPrivate</h1>
           <p className="header__subtitle">Privacy Filter - Gevoelige informatie verwijderen</p>
         </div>
         <div className="header__actions">

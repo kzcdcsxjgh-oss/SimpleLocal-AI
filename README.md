@@ -1,41 +1,42 @@
-# 🏠 SimpleLocal AI
+# MakeItPrivate
 
-**The Subscription-Free Document Assistant**
+**Your Documents, Your Privacy, Your Computer.**
 
 > "So simple your grandma can use it. So private your data never leaves your room."
 
 ---
 
-## 🌟 What is SimpleLocal AI?
+## What is MakeItPrivate?
 
-SimpleLocal AI is a free, open-source desktop application that lets you chat with your documents (PDFs, Word docs, text files) using AI—**100% locally on your computer**. No internet required after setup. No subscriptions. No data collection.
+MakeItPrivate is a free, open-source desktop application that lets you chat with your documents (PDFs, Word docs, text files) using AI — **100% locally on your computer**. No internet required after setup. No subscriptions. No data collection.
 
-**Just double-click and go.** The AI is included - no internet required after installation.
+**Just double-click and go.** The AI runs locally — no cloud, no tracking, no nonsense.
 
-## ✨ Features
+## Features
 
-- **🔒 100% Private**: All processing happens on YOUR computer. Your documents never leave your device.
-- **💰 Forever Free**: No subscriptions, no API costs, no hidden fees.
-- **👵 Senior-Friendly**: Large text, high contrast, simple interface. Passes the "Grandma Test".
-- **📄 Multiple Formats**: Supports PDF, DOCX, TXT, and Markdown files.
-- **🧠 Smart Search**: Uses RAG (Retrieval-Augmented Generation) to find relevant information.
-- **🚀 One-Click Install**: No Terminal, no Python, no Docker. Just a simple installer.
+- **100% Private**: All processing happens on YOUR computer. Your documents never leave your device.
+- **Forever Free**: No subscriptions, no API costs, no hidden fees.
+- **Built-in Privacy Filter**: Automatically detects and redacts sensitive data (BSN, names, IBAN, emails, phone numbers, addresses).
+- **Senior-Friendly**: Large text, high contrast, simple interface. Passes the "Grandma Test".
+- **Multiple Formats**: Supports PDF, DOCX, TXT, and Markdown files.
+- **Smart Search**: Uses RAG (Retrieval-Augmented Generation) to find relevant information in your documents.
+- **One-Click Install**: No Terminal, no Python, no Docker. Just a simple installer.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### For Users (Easy Way)
 
-1. **Download** the installer for your system from the Releases page
+1. **Download** the installer for your system from the [Releases](../../releases) page
 2. **Install** by double-clicking the downloaded file
-3. **Run** SimpleLocal AI - the AI is already included, no internet needed!
+3. **Run** MakeItPrivate — the AI runs locally, no internet needed!
 4. **Done!** Start adding documents and chatting
 
 ### For Developers
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/SimpleLocal-AI.git
-cd SimpleLocal-AI
+git clone https://github.com/yourusername/MakeItPrivate.git
+cd MakeItPrivate
 
 # Install dependencies
 npm install
@@ -56,68 +57,66 @@ npm run package:mac    # macOS (.dmg)
 npm run package:linux  # Linux (.AppImage)
 ```
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
-SimpleLocal-AI/
+MakeItPrivate/
 ├── src/
-│   ├── main/                 # Electron main process
-│   │   ├── index.ts          # Main entry point
-│   │   ├── preload.ts        # Secure IPC bridge
-│   │   └── services/         # Backend services
-│   │       ├── documentProcessor.ts  # PDF/DOCX parsing
-│   │       ├── vectorStore.ts        # LanceDB integration
-│   │       └── localAIService.ts     # Bundled AI (Transformers.js)
+│   ├── core/                  # Framework-agnostic core library
+│   │   ├── adapters/          # LLM providers (Ollama, OpenAI)
+│   │   ├── privacy/           # Privacy filter engine
+│   │   ├── search/            # Full-text search (FTS5)
+│   │   ├── storage/           # SQLite storage layer
+│   │   ├── document-processor.ts
+│   │   └── index.ts           # Core orchestration
 │   │
-│   ├── renderer/             # React frontend
-│   │   ├── App.tsx           # Main application
-│   │   ├── components/       # UI components
-│   │   │   ├── ChatArea.tsx
-│   │   │   ├── DocumentList.tsx
-│   │   │   └── SetupScreen.tsx  # First-run setup
-│   │   └── styles.css        # Senior-friendly styling
+│   ├── main/                  # Electron main process
+│   │   ├── index.ts           # Main entry point & IPC handlers
+│   │   └── preload.ts         # Secure IPC bridge
 │   │
-│   └── shared/               # Shared types
+│   ├── renderer/              # React frontend
+│   │   ├── App.tsx            # Main application
+│   │   ├── components/        # UI components
+│   │   └── styles.css         # Senior-friendly styling
+│   │
+│   └── shared/                # Shared types
 │       └── types.ts
 │
 ├── package.json
-├── vite.config.ts            # Frontend build config
-├── tsconfig.json             # TypeScript config
-└── tsconfig.main.json        # Main process TypeScript config
+├── vite.config.ts
+├── tsconfig.json
+└── tsconfig.main.json
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | Desktop | Electron | Cross-platform desktop app |
 | Frontend | React + TypeScript | User interface |
-| AI Engine | Transformers.js | Bundled local AI (no external setup!) |
-| Vector DB | LanceDB | Local document embeddings |
+| LLM | Ollama / OpenAI | Local or remote AI models |
+| Database | SQLite (better-sqlite3) | Local data & full-text search |
 | Document Processing | pdf-parse, mammoth | PDF and DOCX parsing |
 
-## 📖 How It Works
+## How It Works
 
-1. **First Run**: The app loads the bundled AI model instantly. No downloads, no waiting!
-
-2. **Add Documents**: Click the big "Add Document" button to select PDFs, Word docs, or text files.
-
-3. **Processing**: The app reads your documents and creates searchable embeddings locally.
-
-4. **Chat**: Ask questions in natural language. The AI searches your documents and answers based on their content.
+1. **Add Documents**: Click the "Add Document" button to select PDFs, Word docs, or text files.
+2. **Processing**: The app reads your documents and indexes them locally.
+3. **Chat**: Ask questions in natural language. The AI searches your documents and answers based on their content.
+4. **Privacy Filter**: Optionally scan documents to detect and redact sensitive personal data before sharing.
 
 ```
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│  Your Docs  │───▶│   Chunking   │───▶│  Embeddings │
+│  Your Docs  │───▶│   Chunking   │───▶│  FTS Index  │
 └─────────────┘    └──────────────┘    └─────────────┘
                                               │
                                               ▼
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Answer    │◀───│  Local AI    │◀───│   LanceDB   │
+│   Answer    │◀───│  Local LLM   │◀───│   Search    │
 └─────────────┘    └──────────────┘    └─────────────┘
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! We especially need help with:
 
@@ -132,16 +131,10 @@ We welcome contributions! We especially need help with:
 - The app will hot-reload when you make changes to the renderer
 - Main process changes require restarting the dev server
 
-## 📜 License
+## License
 
-MIT License - See [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- [Transformers.js](https://huggingface.co/docs/transformers.js) for making AI run in JavaScript
-- [LanceDB](https://lancedb.com) for the embedded vector database
-- [Electron](https://electronjs.org) for cross-platform desktop support
+Apache 2.0 License — See [LICENSE](LICENSE) for details.
 
 ---
 
-*Made with ❤️ for everyone who believes AI should be accessible and private.*
+*Made with care for everyone who believes AI should be accessible and private.*
