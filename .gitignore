@@ -12,7 +12,7 @@ out/
 *.AppImage
 
 # Local data
-simplelocal-data/
+makeitprivate-data/
 *.db
 *.lance
 
