@@ -179,13 +179,16 @@ export class NameDetector {
   /**
    * Methode 2: Detecteer "Voornaam (tussenvoegsel) Achternaam" patronen
    * Ondersteunt ook samengestelde voornamen zoals "Klaas-Jan"
+   * En namen met apostroffen zoals "d'Angelo" of "Zoë"
    */
   private detectFullNames(text: string): DetectedName[] {
     const results: DetectedName[] = [];
 
     // Zoek naar woorden die beginnen met een hoofdletter
     // Gebruik flexibelere grenzen: ook na cijfers of begin van tekst
-    const wordPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)(?=[\s.,;:!?()"']|$)/gm;
+    // Ondersteun apostroffen BINNEN namen: d'Angelo, O'Brien (niet aan het eind)
+    // Detecteer namen ook binnen aanhalingstekens: "Hicham", 'Elize'
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -238,16 +241,19 @@ export class NameDetector {
   /**
    * Methode 3: Detecteer namen in context-gevoelige posities
    * Bijv. na "Naam:", komma-gescheiden lijsten, etc.
+   * Ondersteunt zowel "M. C. van Leeuwen" als "M.C. van Leeuwen"
    */
   private detectContextualNames(text: string): DetectedName[] {
     const results: DetectedName[] = [];
 
-    // Patroon: initialen + achternaam, bijv. "J. de Vries", "A.B. Bakker"
-    const initialPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-Z]\.\s?(?:[A-Z]\.\s?)*)((?:(?:van|de|den|der|het|'t|te|ten|ter)\s+)*[A-Z][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/gm;
+    // Patroon: initialen + achternaam, bijv. "J. de Vries", "A.B. Bakker", "M.C. van Leeuwen"
+    // Ondersteun zowel met als zonder spaties tussen initialen
+    // Ook binnen aanhalingstekens: "O. Çelik"
+    const initialPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ]\.(?:\s?[A-ZÀ-ÿ]\.)*\s?)((?:(?:van|de|den|der|het|'t|d'|te|ten|ter|El|el)\s+)*[A-ZÀ-ÿ][a-zà-ÿ']+)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = initialPattern.exec(text)) !== null) {
-      const lastName = match[2].replace(/^(?:van|de|den|der|het|'t|te|ten|ter)\s+/i, '').trim();
+      const lastName = match[2].replace(/^(?:van|de|den|der|het|'t|d'|te|ten|ter|El|el)\s+/i, '').trim();
       if (this.lastNameSet.has(lastName) || this.isLikelySurname(lastName)) {
         results.push({
           original: match[0],
@@ -263,18 +269,19 @@ export class NameDetector {
 
   /**
    * Probeer een naam te extraheren op een positie in de tekst
-   * Bijv. "Jan van den Berg" of "Marie de Vries"
+   * Bijv. "Jan van den Berg", "Marie de Vries", of "Zoë d'Angelo"
    */
   private extractNameAtPosition(text: string): string | null {
     // Probeer: Voornaam(-Voornaam) (tussenvoegsel) Achternaam
-    const namePattern = /^([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*(?:\s+[A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)?)\s+((?:(?:van|de|den|der|het|'t|te|ten|ter|in|op|aan|bij|uit|voor|over|onder|tot)\s+)*[A-ZÀ-ÿ][a-zà-ÿ]+)/;
+    // Ondersteun apostroffen in namen en tussenvoegsels: d', 't, etc.
+    const namePattern = /^([A-ZÀ-ÿ][a-zà-ÿ']+(?:-[A-ZÀ-ÿ][a-zà-ÿ']+)*(?:\s+[A-ZÀ-ÿ][a-zà-ÿ']+(?:-[A-ZÀ-ÿ][a-zà-ÿ']+)*)?)\s+((?:(?:van|de|den|der|het|'t|d'|te|ten|ter|in|op|aan|bij|uit|voor|over|onder|tot)\s+)*[A-ZÀ-ÿ][a-zà-ÿ']+)/;
     const simpleMatch = namePattern.exec(text);
     if (simpleMatch) {
       return simpleMatch[0];
     }
 
-    // Probeer: enkel een naam met hoofdletter (inclusief samengesteld)
-    const singleMatch = /^([A-ZÀ-ÿ][a-zà-ÿ]{2,}(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)/.exec(text);
+    // Probeer: enkel een naam met hoofdletter (inclusief samengesteld en apostrof)
+    const singleMatch = /^([A-ZÀ-ÿ][a-zà-ÿ']{2,}(?:-[A-ZÀ-ÿ][a-zà-ÿ']+)*)/.exec(text);
     if (singleMatch) {
       const word = singleMatch[1];
       if (this.isKnownFirstName(word) || this.lastNameSet.has(word)) {
@@ -303,7 +310,8 @@ export class NameDetector {
     }
 
     // Check voor directe achternaam (hoofdletter), gevolgd door woordgrens
-    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/.exec(remaining);
+    // Ondersteun apostroffen in achternamen: d'Angelo, O'Brien, etc.
+    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ']+)(?=[\s.,;:!?()"']|$)/.exec(remaining);
     if (directMatch) {
       const possibleLastName = directMatch[1];
       if ((this.lastNameSet.has(possibleLastName) || this.isLikelySurname(possibleLastName)) && !isCommonWord(possibleLastName)) {
@@ -395,13 +403,14 @@ export class NameDetector {
 
   /**
    * Pass 5: Detecteer namen in omgekeerde volgorde
-   * Bijv. "Polet, Tom" of "Vries, J. de" of "Burgler, Klaas-Jan"
+   * Bijv. "Polet, Tom", "Vries, J. de", "Burgler, Klaas-Jan", of "Angelo, Zoë d'"
    */
   private detectReversedNames(text: string): DetectedName[] {
     const results: DetectedName[] = [];
 
     // Patroon: Achternaam, Voornaam (evt. met tussenvoegsel ervoor)
-    const pattern = /(?:^|(?<=[\s(]))([A-ZÀ-ÿ][a-zà-ÿ]+),\s+([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)?)(?:\s+(?:van|de|den|der|het|'t|te|ten|ter))*(?=[\s).,;:!?]|$)/gm;
+    // Ondersteun apostroffen in namen
+    const pattern = /(?:^|(?<=[\s(]))([A-ZÀ-ÿ][a-zà-ÿ']+),\s+([A-ZÀ-ÿ][a-zà-ÿ']+(?:-[A-ZÀ-ÿ][a-zà-ÿ']+)?)(?:\s+(?:van|de|den|der|het|'t|d'|te|ten|ter))*(?=[\s).,;:!?]|$)/gm;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
@@ -556,7 +565,9 @@ export class NameDetector {
     const PREPOSITION_BEFORE = /(?:met|voor|bij|aan|over|naar|door|tegen|zonder|volgens|namens|behalve)\s+$/i;
     const VERB_AFTER = /^\s+(?:is|was|heeft|had|wordt|werd|kan|kon|zal|zou|moet|moest|wil|wilde|gaat|ging|komt|kwam|lijkt|blijft|staat|zit|loopt|zei|zegt|vindt|vond|doet|deed|mag|mocht)\b/i;
 
-    const wordPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)(?=[\s.,;:!?()"']|$)/gm;
+    // Ondersteun apostroffen BINNEN voornamen: Zoë, d'Angelo (niet aan het eind)
+    // Ook binnen aanhalingstekens: 'Hicham', "Elize"
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -611,7 +622,8 @@ export class NameDetector {
 
     // Strategie A: Als een bekende voornaam gevonden is maar niet als volledige naam,
     // kijk of het volgende gekapitaliseerde woord een onbekende achternaam kan zijn
-    const wordPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)(?=[\s.,;:!?()"']|$)/gm;
+    // Ondersteun apostroffen BINNEN namen (niet aan het eind) en detectie binnen aanhalingstekens
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -642,8 +654,9 @@ export class NameDetector {
         }
 
         // Direct volgend gekapitaliseerd woord dat niet common is
+        // Ondersteun apostroffen in achternamen
         if (!this.isPositionCovered(pos, pos + word.length, existingDetections, results)) {
-          const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ]{2,})(?=[\s.,;:!?()"']|$)/.exec(afterFirst);
+          const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ']{2,})(?=[\s.,;:!?()"']|$)/.exec(afterFirst);
           if (directMatch && !isCommonWord(directMatch[1])) {
             const possibleLast = directMatch[1];
             // Controleer of dit woord in de buurt van andere namen staat (zelfde paragraaf)
@@ -668,7 +681,8 @@ export class NameDetector {
 
     // Strategie B: Losse bekende voornamen die in de buurt van al-gevonden namen staan
     // (zachter dan Pass 8 — hier hoeft geen werkwoord of voorzetsel bij)
-    const nameWordPattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-ÿ][a-zà-ÿ]+(?:-[A-ZÀ-ÿ][a-zà-ÿ]+)*)(?=[\s.,;:!?()"']|$)/gm;
+    // Ondersteun apostroffen BINNEN namen (niet aan het eind) en detectie binnen aanhalingstekens
+    const nameWordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let m2;
 
     while ((m2 = nameWordPattern.exec(text)) !== null) {

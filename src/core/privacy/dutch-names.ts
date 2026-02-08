@@ -17,14 +17,14 @@ export const DUTCH_FIRST_NAMES: string[] = [
   'Erwin', 'Evert', 'Fabian', 'Ferdinand', 'Florian', 'Floris', 'Frank',
   'Frans', 'Fred', 'Frederik', 'Freek', 'Gerrit', 'Gert', 'Gijs', 'Guido',
   'Guus', 'Hans', 'Harm', 'Harold', 'Harrie', 'Harry', 'Hendrik', 'Henk',
-  'Henri', 'Herman', 'Hugo', 'Ibrahim', 'Ivo', 'Jaap', 'Jack', 'Jacob',
-  'Jacques', 'Jan', 'Jandirk', 'Jasper', 'Jeffrey', 'Jelmer', 'Jeroen',
+  'Henri', 'Herman', 'Hicham', 'Hugo', 'Ibrahim', 'Ivo', 'Jaap', 'Jack', 'Jacob',
+  'Jacques', 'Jan', 'Jandirk', 'Jane', 'Jasper', 'Jean', 'Jeffrey', 'Jelmer', 'Jeroen',
   'Jesse', 'Jim', 'Job', 'Jochem', 'Johan', 'Johannes', 'John', 'Jonathan',
   'Joost', 'Joop', 'Joris', 'Jos', 'Joshua', 'Jurgen', 'Justin', 'Karel',
   'Kees', 'Kevin', 'Klaas', 'Lars', 'Laurens', 'Leo', 'Leon', 'Levi',
-  'Liam', 'Lukas', 'Maarten', 'Marc', 'Marcel', 'Marco', 'Marijn', 'Mark',
+  'Liam', 'Luc', 'Lukas', 'Maarten', 'Marc', 'Marcel', 'Marco', 'Marijn', 'Mark',
   'Martin', 'Martijn', 'Mathijs', 'Matthijs', 'Maurits', 'Max', 'Michiel',
-  'Michel', 'Mike', 'Mohammed', 'Niels', 'Nick', 'Nico', 'Noah', 'Noud',
+  'Michel', 'Mike', 'Mohammed', 'Niels', 'Nick', 'Nico', 'Noah', 'Nood', 'Noor', 'Noud',
   'Olivier', 'Oscar', 'Otto', 'Pascal', 'Patrick', 'Paul', 'Peter', 'Piet',
   'Pieter', 'Quinten', 'Ralf', 'Ramon', 'Remco', 'René', 'Richard', 'Rick',
   'Rob', 'Robert', 'Robin', 'Robbert', 'Rogier', 'Roland', 'Ron', 'Ronald',
@@ -39,8 +39,8 @@ export const DUTCH_FIRST_NAMES: string[] = [
   'Anouk', 'Astrid', 'Barbara', 'Bianca', 'Bo', 'Brigitte', 'Carlijn',
   'Carmen', 'Caroline', 'Chantal', 'Charlotte', 'Christa', 'Claudia', 'Corina',
   'Cornelia', 'Daphne', 'Denise', 'Diana', 'Diane', 'Dominique', 'Dora',
-  'Edith', 'Eline', 'Elisa', 'Elisabeth', 'Elise', 'Ellen', 'Els',
-  'Esther', 'Eva', 'Evelien', 'Femke', 'Fleur', 'Floor', 'Gerda',
+  'Edith', 'Eline', 'Elisa', 'Elisabeth', 'Elise', 'Elize', 'Ellen', 'Els',
+  'Esther', 'Eva', 'Evelien', 'Fatima', 'Femke', 'Fleur', 'Floor', 'Gerda',
   'Greta', 'Grietje', 'Hanna', 'Hanneke', 'Heleen', 'Helma', 'Hendrika',
   'Henriette', 'Ilse', 'Ingrid', 'Irene', 'Iris', 'Isabel', 'Jacqueline',
   'Jana', 'Janine', 'Janneke', 'Jennifer', 'Jessica', 'Jolanda', 'Julia',
@@ -49,16 +49,16 @@ export const DUTCH_FIRST_NAMES: string[] = [
   'Louise', 'Maaike', 'Manon', 'Marga', 'Margriet', 'Maria', 'Marianne',
   'Marie', 'Marieke', 'Marije', 'Marijke', 'Marina', 'Mariska', 'Marjan',
   'Marloes', 'Martine', 'Melissa', 'Michelle', 'Mieke', 'Miriam', 'Monique',
-  'Nadia', 'Naomi', 'Nathalie', 'Nicolette', 'Nicole', 'Nina', 'Nora',
+  'Nadia', 'Naomi', 'Nathalie', 'Nicolette', 'Nicole', 'Nienke', 'Nina', 'Nora',
   'Patricia', 'Paula', 'Pauline', 'Petra', 'Rachel', 'Rebecca', 'Regina',
   'Renate', 'Renske', 'Rianne', 'Rosalie', 'Sandra', 'Sanne', 'Sara',
   'Sarah', 'Saskia', 'Silvia', 'Simone', 'Sophie', 'Suzanne', 'Sylvia',
-  'Tamara', 'Tanja', 'Thea', 'Wendy', 'Wilma', 'Yvonne',
+  'Tamara', 'Tanja', 'Thea', 'Wendy', 'Wilma', 'Yvonne', 'Zoë',
 ];
 
 export const DUTCH_LAST_NAMES: string[] = [
   // Meest voorkomende achternamen in Nederland (top 300+)
-  'Aalbers', 'Aarts', 'Adriaansen', 'Akker', 'Alblas',
+  'Aalbers', 'Aarts', 'Adriaansen', 'Akker', 'Alblas', 'Amrani', 'Angelo',
   'Baan', 'Baas', 'Bakker', 'Bal', 'Barends', 'Bauer', 'Beek', 'Beer',
   'Berg', 'Bergen', 'Berger', 'Bergman', 'Beukers', 'Bijl', 'Blaauw',
   'Blok', 'Bloem', 'Boer', 'Boogaard', 'Boom', 'Boon', 'Boor', 'Bos',
@@ -66,8 +66,8 @@ export const DUTCH_LAST_NAMES: string[] = [
   'Breeuwer', 'Brink', 'Brinkman', 'Broek', 'Broekhuizen', 'Brouwer',
   'Bruijn', 'Bruijne', 'Bruin', 'Bruins', 'Buijs', 'Buis', 'Burger', 'Burgler',
   'Bussche', 'Buuren',
-  'Cohen', 'Coolen', 'Cornelissen', 'Coster',
-  'Daal', 'Dam', 'Dekker', 'Dijk', 'Dijkema', 'Dijkman', 'Dijkstra',
+  'Celik', 'Çelik', 'Cohen', 'Coolen', 'Cornelissen', 'Coster',
+  'Daal', 'Dam', 'Damme', 'Dekker', 'Dijk', 'Dijkema', 'Dijkman', 'Dijkstra',
   'Donk', 'Donker', 'Doorn', 'Driessen', 'Duin', 'Duijn',
   'Eijk', 'Eijkel', 'Eijkman', 'Elders', 'Engel', 'Evers',
   'Faber', 'Flink', 'Fontein', 'Franken', 'Franssen',
@@ -75,7 +75,7 @@ export const DUTCH_LAST_NAMES: string[] = [
   'Graaf', 'Groen', 'Groenendaal', 'Groenewold', 'Groot', 'Gulden',
   'Haag', 'Haas', 'Hagen', 'Hakker', 'Harmsen', 'Hart', 'Haver',
   'Heemskerk', 'Heerma', 'Heijden', 'Hendriks', 'Hengst', 'Hermans',
-  'Heuvel', 'Hoek', 'Hoekstra', 'Hoffman', 'Hofman', 'Hofstede',
+  'Heuvel', 'Hof', 'Hoek', 'Hoekstra', 'Hoffman', 'Hofman', 'Hofstede',
   'Holleman', 'Holt', 'Hoogeveen', 'Hoogendoorn', 'Horst', 'Houben',
   'Huisman', 'Huizen',
   'Jacobs', 'Jager', 'Jan', 'Jansen', 'Janssen', 'Janssens', 'Jong',
@@ -85,13 +85,13 @@ export const DUTCH_LAST_NAMES: string[] = [
   'Koek', 'Koeman', 'Kok', 'Koning', 'Kool', 'Koopman', 'Koopmans',
   'Koot', 'Korte', 'Koster', 'Kraai', 'Kramer', 'Kroon', 'Kuijper',
   'Kuijpers', 'Kuiper', 'Kuipers',
-  'Laan', 'Laar', 'Laarhoven', 'Lam', 'Lange', 'Leemans', 'Leeuw',
+  'Laan', 'Laar', 'Laarhoven', 'Lam', 'Lange', 'Leemans', 'Leeuw', 'Leeuwen',
   'Linden', 'Lingen', 'Looij', 'Loon', 'Lucassen',
   'Maas', 'Maassen', 'Maat', 'Mans', 'Meer', 'Meijer', 'Meijers',
   'Meulen', 'Meyer', 'Molenaar', 'Mol', 'Molen', 'Mulder', 'Muller',
   'Nagelkerke', 'Nauta', 'Nieuwenhuis', 'Nijhof', 'Nijhuis', 'Nijland',
   'Nobel', 'Nooij', 'Noort', 'Norden',
-  'Oerlemans', 'Oomen', 'Oord', 'Oorschot', 'Oort', 'Otten', 'Oudshoorn',
+  'Oerlemans', 'Oomen', 'Oord', 'Oorschot', 'Oort', 'Oosterhuis', 'Otten', 'Oudshoorn',
   'Pas', 'Peters', 'Petersen', 'Pieters', 'Pietersen', 'Plasman', 'Poel',
   'Pol', 'Polet', 'Post', 'Postma', 'Prins', 'Pronk',
   'Raad', 'Raven', 'Reijnen', 'Riet', 'Rijke', 'Rijn', 'Rijnders',
@@ -118,6 +118,7 @@ export const DUTCH_LAST_NAMES: string[] = [
  */
 export const DUTCH_PREFIXES: string[] = [
   'de', 'den', 'der', 'des',
+  "d'", // Italiaanse/Franse namen: d'Angelo, d'Souza
   'het', "'t",
   'van', 'van de', 'van den', 'van der', 'van het', "van 't",
   'in', 'in de', 'in den', "in 't",
@@ -130,6 +131,8 @@ export const DUTCH_PREFIXES: string[] = [
   'onder', 'onder de', 'onder den', 'onder het',
   'over', 'over de', 'over den', 'over het',
   'voor', 'voor de', 'voor den', 'voor het',
+  'El', 'el', // Arabische namen: El Amrani
+  'Al', 'al', // Arabische namen: Al Bakri
 ];
 
 /**

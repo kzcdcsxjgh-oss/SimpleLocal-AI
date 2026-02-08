@@ -3,14 +3,14 @@
     "counts": {
       "bsn": 1,
       "date": 10,
-      "name": 35,
+      "name": 46,
       "iban": 0,
       "email": 8,
-      "phone": 10,
+      "phone": 15,
       "postcode": 5,
       "address": 4
     },
-    "total": 73
+    "total": 89
   },
   "matches": [
     {
@@ -75,6 +75,13 @@
       "type": "name",
       "startOffset": 543,
       "endOffset": 558
+    },
+    {
+      "placeholder": "[PHONE-002]",
+      "original": "020 123 45 67",
+      "type": "phone",
+      "startOffset": 591,
+      "endOffset": 604
     },
     {
       "placeholder": "[EMAIL-002]",
@@ -189,11 +196,25 @@
       "endOffset": 1464
     },
     {
-      "placeholder": "[PHONE-002]",
+      "placeholder": "[PHONE-003]",
+      "original": "010-98765432",
+      "type": "phone",
+      "startOffset": 1515,
+      "endOffset": 1527
+    },
+    {
+      "placeholder": "[PHONE-004]",
       "original": "035-1112233",
       "type": "phone",
       "startOffset": 1589,
       "endOffset": 1600
+    },
+    {
+      "placeholder": "[NAME-009]",
+      "original": "Fatima El Amrani",
+      "type": "name",
+      "startOffset": 1622,
+      "endOffset": 1638
     },
     {
       "placeholder": "[NAME-008]",
@@ -203,11 +224,25 @@
       "endOffset": 1648
     },
     {
-      "placeholder": "[PHONE-003]",
+      "placeholder": "[PHONE-005]",
+      "original": "010-98765432",
+      "type": "phone",
+      "startOffset": 1699,
+      "endOffset": 1711
+    },
+    {
+      "placeholder": "[PHONE-006]",
       "original": "035-1112233",
       "type": "phone",
       "startOffset": 1773,
       "endOffset": 1784
+    },
+    {
+      "placeholder": "[NAME-009]",
+      "original": "Fatima El Amrani",
+      "type": "name",
+      "startOffset": 1806,
+      "endOffset": 1822
     },
     {
       "placeholder": "[DATE-005]",
@@ -224,7 +259,7 @@
       "endOffset": 1899
     },
     {
-      "placeholder": "[NAME-009]",
+      "placeholder": "[NAME-010]",
       "original": "Lotte",
       "type": "name",
       "startOffset": 1942,
@@ -245,7 +280,7 @@
       "endOffset": 2040
     },
     {
-      "placeholder": "[NAME-010]",
+      "placeholder": "[NAME-011]",
       "original": "Marijke",
       "type": "name",
       "startOffset": 2107,
@@ -294,11 +329,25 @@
       "endOffset": 2347
     },
     {
-      "placeholder": "[PHONE-004]",
+      "placeholder": "[NAME-012]",
+      "original": "Nienke van 't Hof",
+      "type": "name",
+      "startOffset": 2566,
+      "endOffset": 2583
+    },
+    {
+      "placeholder": "[PHONE-007]",
       "original": "06 87654321",
       "type": "phone",
       "startOffset": 2599,
       "endOffset": 2610
+    },
+    {
+      "placeholder": "[NAME-013]",
+      "original": "Jean-Luc van Damme",
+      "type": "name",
+      "startOffset": 2670,
+      "endOffset": 2688
     },
     {
       "placeholder": "[ADDRESS-004]",
@@ -336,7 +385,7 @@
       "endOffset": 3054
     },
     {
-      "placeholder": "[NAME-011]",
+      "placeholder": "[NAME-014]",
       "original": "P. J. Kuipers",
       "type": "name",
       "startOffset": 3075,
@@ -357,7 +406,7 @@
       "endOffset": 3185
     },
     {
-      "placeholder": "[NAME-011]",
+      "placeholder": "[NAME-014]",
       "original": "P. J. Kuipers",
       "type": "name",
       "startOffset": 3206,
@@ -371,42 +420,56 @@
       "endOffset": 3417
     },
     {
-      "placeholder": "[NAME-012]",
+      "placeholder": "[NAME-009]",
+      "original": "Fatima",
+      "type": "name",
+      "startOffset": 3437,
+      "endOffset": 3443
+    },
+    {
+      "placeholder": "[NAME-015]",
       "original": "Anna van der Velde",
       "type": "name",
       "startOffset": 3793,
       "endOffset": 3811
     },
     {
-      "placeholder": "[NAME-013]",
+      "placeholder": "[NAME-016]",
+      "original": "Noor-Jane",
+      "type": "name",
+      "startOffset": 3850,
+      "endOffset": 3859
+    },
+    {
+      "placeholder": "[NAME-017]",
       "original": "Bram Oosterhuis",
       "type": "name",
       "startOffset": 3983,
       "endOffset": 3998
     },
     {
-      "placeholder": "[PHONE-005]",
+      "placeholder": "[PHONE-008]",
       "original": "06-22223333",
       "type": "phone",
       "startOffset": 4001,
       "endOffset": 4012
     },
     {
-      "placeholder": "[NAME-013]",
+      "placeholder": "[NAME-017]",
       "original": "Bram Oosterhuis",
       "type": "name",
       "startOffset": 4120,
       "endOffset": 4135
     },
     {
-      "placeholder": "[PHONE-006]",
+      "placeholder": "[PHONE-009]",
       "original": "06-22223333",
       "type": "phone",
       "startOffset": 4138,
       "endOffset": 4149
     },
     {
-      "placeholder": "[NAME-014]",
+      "placeholder": "[NAME-018]",
       "original": "K. Bakker",
       "type": "name",
       "startOffset": 4322,
@@ -420,7 +483,7 @@
       "endOffset": 4354
     },
     {
-      "placeholder": "[PHONE-007]",
+      "placeholder": "[PHONE-010]",
       "original": "088-1200300",
       "type": "phone",
       "startOffset": 4385,
@@ -434,7 +497,7 @@
       "endOffset": 4439
     },
     {
-      "placeholder": "[NAME-015]",
+      "placeholder": "[NAME-019]",
       "original": "L. van Rijn",
       "type": "name",
       "startOffset": 4440,
@@ -448,7 +511,7 @@
       "endOffset": 4471
     },
     {
-      "placeholder": "[PHONE-008]",
+      "placeholder": "[PHONE-011]",
       "original": "+31 6 99998888",
       "type": "phone",
       "startOffset": 4502,
@@ -462,11 +525,25 @@
       "endOffset": 4555
     },
     {
+      "placeholder": "[NAME-020]",
+      "original": "O. Çelik",
+      "type": "name",
+      "startOffset": 4562,
+      "endOffset": 4570
+    },
+    {
       "placeholder": "[DATE-008]",
       "original": "02-02-1982",
       "type": "date",
       "startOffset": 4587,
       "endOffset": 4597
+    },
+    {
+      "placeholder": "[PHONE-012]",
+      "original": "070 333 44 55",
+      "type": "phone",
+      "startOffset": 4628,
+      "endOffset": 4641
     },
     {
       "placeholder": "[EMAIL-006]",
@@ -476,6 +553,13 @@
       "endOffset": 4683
     },
     {
+      "placeholder": "[NAME-021]",
+      "original": "Zoë",
+      "type": "name",
+      "startOffset": 4685,
+      "endOffset": 4688
+    },
+    {
       "placeholder": "[DATE-009]",
       "original": "10-10-1990",
       "type": "date",
@@ -483,7 +567,7 @@
       "endOffset": 4724
     },
     {
-      "placeholder": "[PHONE-009]",
+      "placeholder": "[PHONE-013]",
       "original": "030-4445566",
       "type": "phone",
       "startOffset": 4755,
@@ -504,7 +588,7 @@
       "endOffset": 4830
     },
     {
-      "placeholder": "[PHONE-010]",
+      "placeholder": "[PHONE-014]",
       "original": "030-4445566",
       "type": "phone",
       "startOffset": 4861,
@@ -518,24 +602,41 @@
       "endOffset": 4910
     },
     {
-      "placeholder": "[NAME-016]",
+      "placeholder": "[NAME-022]",
       "original": "J.B. de Wit",
       "type": "name",
       "startOffset": 5052,
       "endOffset": 5063
+    },
+    {
+      "placeholder": "[NAME-023]",
+      "original": "M.C. van Leeuwen",
+      "type": "name",
+      "startOffset": 5067,
+      "endOffset": 5083
+    },
+    {
+      "placeholder": "[NAME-024]",
+      "original": "Hicham",
+      "type": "name",
+      "startOffset": 5186,
+      "endOffset": 5192
+    },
+    {
+      "placeholder": "[NAME-025]",
+      "original": "Elize",
+      "type": "name",
+      "startOffset": 5198,
+      "endOffset": 5203
+    },
+    {
+      "placeholder": "[PHONE-015]",
+      "original": "Tel: 06–10101010",
+      "type": "phone",
+      "startOffset": 5301,
+      "endOffset": 5317
     }
   ],
-  "missedNames": [
-    "Fatima El Amrani",
-    "Nienke van 't Hof",
-    "Jean-Luc van Damme",
-    "Noor-Jane Koster-van Dijk",
-    "O. Çelik",
-    "Zoë d'Angelo",
-    "M.C. van Leeuwen",
-    "Hicham",
-    "Elize",
-    "Fatima"
-  ],
-  "filteredText": "Cliëntdossier – testdocument anonimisatie (dummy data)Datum opmaak: [DATE-001]Organisatie: Stichting [NAME-001] (test)Locatie: De Lijsterhof, afdeling 2B\nIn dit document staan testgegevens die uitsluitend bedoeld zijn om het anonimiseren te testen. De cliënt is geregistreerd onder de naam mevrouw [NAME-002], [DATE-002], met een test-BSN [BSN-001]. De contactpersoon is haar zoon, de heer [NAME-003], telefoonnummer [PHONE-001] en e-mailadres [EMAIL-001]. Als tweede contactpersoon staat vermeld: \"[NAME-004]\" (mantelzorger), bereikbaar via 020 123 45 67 en via [EMAIL-002].\nHet bezoekadres van de cliënt staat genoteerd als: [ADDRESS-001], [POSTCODE-001] Amsterdam. Het factuuradres staat apart vermeld als: t.a.v. [NAME-005], Postbus 203, [POSTCODE-002] Amsterdam. In het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-002], [POSTCODE-003] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-003].\nIn het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-003], [POSTCODE-004] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-004].\nTijdens het intakegesprek was wijkverpleegkundige drs. [NAME-006] aanwezig, samen met verzorgende IG [NAME-007]. In het verslag is opgenomen dat [NAME-006] de medicatielijst heeft doorgenomen en dat [NAME-007] de thuissituatie heeft besproken. De huisarts die in het systeem staat is \"Dr. [NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon 010-98765432. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-002], met contactpersoon \"Fatima El Amrani\".\n[NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon 010-98765432. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-003], met contactpersoon \"Fatima El Amrani\".\nIn de dagelijkse rapportage van [DATE-005] is geschreven dat [NAME-002] onrustig was in de ochtend en vroeg naar \"[NAME-009]\". Later op de dag werd vermeld dat \"Mevr. de [NAME-002]\" meer ontspannen was na bezoek van [NAME-003]. In een korte notitie staat ook: \"mw Devries vroeg naar haar zus: [NAME-010].\" In een andere regel staat de naam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nnaam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nEr is een medisch meetmoment geregistreerd met als identificatie: cliëntnummer CL-948271, en een tweede registratienummer: Dossier-ID 2026/02/07-XY. In het systeem staat ook een personeelsverwijzing naar medewerker \"Nienke van 't Hof\", met telefoon [PHONE-004]. In een bijlage staat een afspraakbevestiging met de naam \"Jean-Luc van Damme\" als fysiotherapeut, praktijkadres: [ADDRESS-004], [POSTCODE-005] Amsterdam, e-mail: [EMAIL-003].\nOnderstaande passage bevat expres lastige tekstopmaak zoals afbrekingen en regeleinden, zodat je kunt testen of namen alsnog blijven staan door PDF/OCR-achtige ruis.De cliënt is gezien door Mevr. An-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-011] heeft toe-lichting gegeven over het plan.\nAn-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-011] heeft toe-lichting gegeven over het plan.\nIn het zorgplan staat dat de cliënt hulp nodig heeft bij ADL en dat de medicatie wordt toegediend volgens schema. In de opmerkingen is genoteerd dat \"[NAME-006]\" heeft gebeld met \"Fatima\" van de apotheek over een herhaalrecept. Verder staat in de vrije tekst: \"Graag terugkoppelen aan Van der Meer (mantelzorger) na het weekend.\"\nEr is ook een losse regel opgenomen met alleen hoofdletters om te testen op herkenning van namen in caps: \"CONTACT: JEROEN DE VRIES\". Verder staat er een variant met een tussenvoegsel en meerdere spaties: \"[NAME-012]\" en een variant met een koppelteken: \"Noor-Jane Koster-van Dijk\". In een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-013] | [PHONE-005]\".\nIn een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-013] | [PHONE-006]\".\nVoor testdoeleinden staan hieronder extra identifiers die je tool zou moeten weghalen, zoals geboortedata, telefoonnummers, e-mails en test-BSN's (niet-elfproef).De heer [NAME-014], [DATE-006], test-BSN 987654321, telefoon [PHONE-007], e-mail: [EMAIL-004] [NAME-015], geboren [DATE-007], test-BSN 111222334, telefoon [PHONE-008], e-mail: [EMAIL-005] heer \"O. Çelik\", geboortedatum [DATE-008], test-BSN 222333445, telefoon 070 333 44 55, e-mail: [EMAIL-006] \"Zoë d'Angelo\", geboortedatum [DATE-009], test-BSN 333444556, telefoon [PHONE-009], e-mail: [EMAIL-007].\ngeboortedatum [DATE-010], test-BSN 333444556, telefoon [PHONE-010], e-mail: [EMAIL-008].\nTot slot staat er een korte passage met alleen initialen en achternaam, omdat die vaak gemist wordt door naïeve filters: \"Overleg gehad met [NAME-016] en M.C. van Leeuwen over vervolgafspraak.\" Ook staat er een passage met een naam tussen aanhalingstekens: \"Cliënt noemde 'Hicham' en 'Elize' als vertrouwde gezichten.\" In de bijlage staat één regel met \"BSN: 444555667\" en één regel met \"Tel: 06–10101010\", waarbij het streepje expres anders is dan normaal."
+  "missedNames": [],
+  "filteredText": "Cliëntdossier – testdocument anonimisatie (dummy data)Datum opmaak: [DATE-001]Organisatie: Stichting [NAME-001] (test)Locatie: De Lijsterhof, afdeling 2B\nIn dit document staan testgegevens die uitsluitend bedoeld zijn om het anonimiseren te testen. De cliënt is geregistreerd onder de naam mevrouw [NAME-002], [DATE-002], met een test-BSN [BSN-001]. De contactpersoon is haar zoon, de heer [NAME-003], telefoonnummer [PHONE-001] en e-mailadres [EMAIL-001]. Als tweede contactpersoon staat vermeld: \"[NAME-004]\" (mantelzorger), bereikbaar via [PHONE-002] en via [EMAIL-002].\nHet bezoekadres van de cliënt staat genoteerd als: [ADDRESS-001], [POSTCODE-001] Amsterdam. Het factuuradres staat apart vermeld als: t.a.v. [NAME-005], Postbus 203, [POSTCODE-002] Amsterdam. In het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-002], [POSTCODE-003] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-003].\nIn het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-003], [POSTCODE-004] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-004].\nTijdens het intakegesprek was wijkverpleegkundige drs. [NAME-006] aanwezig, samen met verzorgende IG [NAME-007]. In het verslag is opgenomen dat [NAME-006] de medicatielijst heeft doorgenomen en dat [NAME-007] de thuissituatie heeft besproken. De huisarts die in het systeem staat is \"Dr. [NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon [PHONE-003]. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-004], met contactpersoon \"[NAME-009]\".\n[NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon [PHONE-005]. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-006], met contactpersoon \"[NAME-009]\".\nIn de dagelijkse rapportage van [DATE-005] is geschreven dat [NAME-002] onrustig was in de ochtend en vroeg naar \"[NAME-010]\". Later op de dag werd vermeld dat \"Mevr. de [NAME-002]\" meer ontspannen was na bezoek van [NAME-003]. In een korte notitie staat ook: \"mw Devries vroeg naar haar zus: [NAME-011].\" In een andere regel staat de naam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nnaam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nEr is een medisch meetmoment geregistreerd met als identificatie: cliëntnummer CL-948271, en een tweede registratienummer: Dossier-ID 2026/02/07-XY. In het systeem staat ook een personeelsverwijzing naar medewerker \"[NAME-012]\", met telefoon [PHONE-007]. In een bijlage staat een afspraakbevestiging met de naam \"[NAME-013]\" als fysiotherapeut, praktijkadres: [ADDRESS-004], [POSTCODE-005] Amsterdam, e-mail: [EMAIL-003].\nOnderstaande passage bevat expres lastige tekstopmaak zoals afbrekingen en regeleinden, zodat je kunt testen of namen alsnog blijven staan door PDF/OCR-achtige ruis.De cliënt is gezien door Mevr. An-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-014] heeft toe-lichting gegeven over het plan.\nAn-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-014] heeft toe-lichting gegeven over het plan.\nIn het zorgplan staat dat de cliënt hulp nodig heeft bij ADL en dat de medicatie wordt toegediend volgens schema. In de opmerkingen is genoteerd dat \"[NAME-006]\" heeft gebeld met \"[NAME-009]\" van de apotheek over een herhaalrecept. Verder staat in de vrije tekst: \"Graag terugkoppelen aan Van der Meer (mantelzorger) na het weekend.\"\nEr is ook een losse regel opgenomen met alleen hoofdletters om te testen op herkenning van namen in caps: \"CONTACT: JEROEN DE VRIES\". Verder staat er een variant met een tussenvoegsel en meerdere spaties: \"[NAME-015]\" en een variant met een koppelteken: \"[NAME-016] Koster-van Dijk\". In een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-017] | [PHONE-008]\".\nIn een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-017] | [PHONE-009]\".\nVoor testdoeleinden staan hieronder extra identifiers die je tool zou moeten weghalen, zoals geboortedata, telefoonnummers, e-mails en test-BSN's (niet-elfproef).De heer [NAME-018], [DATE-006], test-BSN 987654321, telefoon [PHONE-010], e-mail: [EMAIL-004] [NAME-019], geboren [DATE-007], test-BSN 111222334, telefoon [PHONE-011], e-mail: [EMAIL-005] heer \"[NAME-020]\", geboortedatum [DATE-008], test-BSN 222333445, telefoon [PHONE-012], e-mail: [EMAIL-006] \"[NAME-021] d'Angelo\", geboortedatum [DATE-009], test-BSN 333444556, telefoon [PHONE-013], e-mail: [EMAIL-007].\ngeboortedatum [DATE-010], test-BSN 333444556, telefoon [PHONE-014], e-mail: [EMAIL-008].\nTot slot staat er een korte passage met alleen initialen en achternaam, omdat die vaak gemist wordt door naïeve filters: \"Overleg gehad met [NAME-022] en [NAME-023] over vervolgafspraak.\" Ook staat er een passage met een naam tussen aanhalingstekens: \"Cliënt noemde '[NAME-024]' en '[NAME-025]' als vertrouwde gezichten.\" In de bijlage staat één regel met \"BSN: 444555667\" en één regel met \"[PHONE-015]\", waarbij het streepje expres anders is dan normaal."
 }

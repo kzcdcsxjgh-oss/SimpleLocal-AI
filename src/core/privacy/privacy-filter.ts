@@ -446,29 +446,44 @@ export class PrivacyFilter {
 
   /**
    * Nederlandse telefoonnummers
+   * Ondersteunt diverse scheidingstekens: -, spatie, ., en-dash (–), etc.
    */
   private detectPhone(text: string): DetectedItem[] {
     const results: DetectedItem[] = [];
+
+    // Normaliseer speciale koppeltekens naar gewone koppeltekens voor detectie
+    // En-dash (–), em-dash (—), etc.
+    const normalizedText = text.replace(/[–—−]/g, '-');
+
     const patterns = [
-      // 06-12345678, 06 12345678, 0612345678
-      /\b(06[-\s.]?\d{2}[-\s.]?\d{2}[-\s.]?\d{2}[-\s.]?\d{2})\b/g,
+      // 06-12345678, 06 12345678, 0612345678, ook met meerdere spaties: 06 12 34 56 78
+      /\b(06[-\s.]?\d{1,2}[-\s.]?\d{1,2}[-\s.]?\d{1,2}[-\s.]?\d{1,2}[-\s.]?\d{1,2})\b/g,
       // +31 6 12345678, 0031 6 12345678
       /(\+31|0031)[-\s.]?(\(0\)|0)?[-\s.]?6[-\s.]?\d{2}[-\s.]?\d{2}[-\s.]?\d{2}[-\s.]?\d{2}/g,
-      // Vaste nummers: 020-1234567, 030 1234567, etc.
-      /\b(0[1-9]\d{1,2})[-\s.](\d{6,7})\b/g,
+      // Vaste nummers: 020-1234567, 030 1234567, 020 123 45 67 (met extra spaties)
+      /\b(0[1-9]\d{1,2})[-\s.](\d{1,3}[-\s.]?\d{1,3}[-\s.]?\d{1,3})\b/g,
       // +31 20 1234567
       /(\+31|0031)[-\s.]?(\(0\)|0)?[-\s.]?([1-9]\d{1,2})[-\s.]?(\d{6,7})\b/g,
+      // Telefoonnummers met "tel:" prefix
+      /\b(?:tel:|telefoon:)\s*([-\s\d()]+)/gi,
     ];
 
     for (const pattern of patterns) {
       let match;
-      while ((match = pattern.exec(text)) !== null) {
-        results.push({
-          original: match[0],
-          type: 'phone',
-          start: match.index,
-          end: match.index + match[0].length,
-        });
+      while ((match = pattern.exec(normalizedText)) !== null) {
+        // Map terug naar originele tekst positie
+        const originalMatch = text.slice(match.index, match.index + match[0].length);
+
+        // Filter te korte matches (moet minimaal 9-10 cijfers bevatten)
+        const digitCount = originalMatch.replace(/\D/g, '').length;
+        if (digitCount >= 9) {
+          results.push({
+            original: originalMatch,
+            type: 'phone',
+            start: match.index,
+            end: match.index + match[0].length,
+          });
+        }
       }
     }
 
