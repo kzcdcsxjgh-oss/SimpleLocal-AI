@@ -144,8 +144,12 @@ export class NameDetector {
     const afterRound1 = this.deduplicateNames([...allSoFar, ...contextual]);
     const aggressive = this.detectAggressiveSecondPass(text, afterRound1);
 
+    // Pass 10: Aaneengeschreven prefix+achternaam varianten (bijv. "Devries" voor "de Vries")
+    const afterRound2 = this.deduplicateNames([...afterRound1, ...aggressive]);
+    const concatenated = this.detectConcatenatedNames(text, afterRound2);
+
     // Finale deduplicatie
-    return this.deduplicateNames([...afterRound1, ...aggressive]);
+    return this.deduplicateNames([...afterRound2, ...concatenated]);
   }
 
   /**
@@ -315,7 +319,7 @@ export class NameDetector {
 
     // Check voor directe achternaam (hoofdletter), gevolgd door woordgrens
     // Ondersteun apostroffen in achternamen: d'Angelo, O'Brien, etc.
-    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ']+)(?=[\s.,;:!?()"']|$)/.exec(remaining);
+    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ']+)(?=[\s.,;:!?()"'\-]|$)/.exec(remaining);
     if (directMatch) {
       const possibleLastName = directMatch[1];
       if ((this.lastNameSet.has(possibleLastName) || this.isLikelySurname(possibleLastName)) && !isCommonWord(possibleLastName)) {
@@ -759,6 +763,50 @@ export class NameDetector {
   }
 
   /**
+   * Pass 10: Detecteer aaneengeschreven prefix+achternaam varianten
+   * Bijv. "Devries" (= de Vries), "Vandenberg" (= van den Berg)
+   * Alleen als de losse variant al als naam bevestigd is.
+   */
+  private detectConcatenatedNames(text: string, existingDetections: DetectedName[]): DetectedName[] {
+    const results: DetectedName[] = [];
+    const prefixes = ['de', 'den', 'der', 'van', 'ten', 'ter'];
+
+    // Verzamel bevestigde achternamen met tussenvoegsel
+    const confirmedSurnames = new Set<string>();
+    for (const det of existingDetections) {
+      const parts = det.original.split(/\s+/);
+      if (parts.length >= 2) {
+        // Zoek achternaam-deel na tussenvoegsel
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (prefixes.includes(parts[i].toLowerCase())) {
+            const surname = parts.slice(i).map(p => p.toLowerCase()).join('');
+            confirmedSurnames.add(surname);
+          }
+        }
+      }
+    }
+
+    if (confirmedSurnames.size === 0) return results;
+
+    // Zoek woorden die beginnen met een prefix en een bekende achternaam bevatten
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-Za-zÀ-ÿ]{5,})(?=[\s.,;:!?()"''"„«»]|$)/gm;
+    let match;
+
+    while ((match = wordPattern.exec(text)) !== null) {
+      const word = match[1];
+      const pos = match.index;
+      if (this.isPositionCovered(pos, pos + word.length, existingDetections, results)) continue;
+
+      const lower = word.toLowerCase();
+      if (confirmedSurnames.has(lower)) {
+        results.push({ original: word, type: 'name', start: pos, end: pos + word.length });
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Check of een positie al gedekt is door een bestaande detectie
    */
   private isPositionCovered(
@@ -797,7 +845,7 @@ export class NameDetector {
       'daal', 'laan', 'poort', 'kerk', 'hof', 'brug', 'sloot',
       'woud', 'aard',
       // Beroep/eigenschap
-      'ler', 'ner', 'ker', 'ger',
+      'ler', 'ner', 'ker', 'ger', 'ster', 'ter',
       // Patroniem
       'ens', 'ink', 'ling',
     ];

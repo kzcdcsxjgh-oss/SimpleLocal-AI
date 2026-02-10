@@ -324,7 +324,8 @@ export class PrivacyFilter {
         digits = match[2] + match[3] + match[4];
       }
 
-      if (this.isValidBSN(digits)) {
+      // Elfproef-validatie, OF context-gebaseerd: "BSN" keyword in de buurt
+      if (this.isValidBSN(digits) || this.hasBSNContext(text, match.index)) {
         results.push({
           original: match[0],
           type: 'bsn',
@@ -335,6 +336,16 @@ export class PrivacyFilter {
     }
 
     return results;
+  }
+
+  /**
+   * Check of er een BSN-gerelateerd keyword in de buurt staat (binnen 40 tekens)
+   */
+  private hasBSNContext(text: string, position: number): boolean {
+    const windowStart = Math.max(0, position - 40);
+    const windowEnd = Math.min(text.length, position + 20);
+    const context = text.slice(windowStart, windowEnd).toLowerCase();
+    return /\bbsn\b|burgerservicenummer/.test(context);
   }
 
   /**
