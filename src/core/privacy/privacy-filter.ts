@@ -429,10 +429,18 @@ export class PrivacyFilter {
    */
   private detectEmail(text: string): DetectedItem[] {
     const results: DetectedItem[] = [];
-    const pattern = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
+    // TLD beperkt tot 2-10 tekens (voorkomt dat .Mevrouw of .De als TLD wordt gezien)
+    const pattern = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}\b/g;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
+      // Extra validatie: het domein mag niet eindigen op een woord met hoofdletter
+      // (bijv. "example.Mevrouw" is geen geldig domein)
+      const domainPart = match[0].split('@')[1];
+      const lastDotIdx = domainPart.lastIndexOf('.');
+      const tld = domainPart.slice(lastDotIdx + 1);
+      if (/^[A-Z]/.test(tld)) continue; // TLD's zijn lowercase
+
       results.push({
         original: match[0],
         type: 'email',
