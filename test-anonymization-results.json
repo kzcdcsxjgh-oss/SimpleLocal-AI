@@ -5,12 +5,12 @@
       "date": 10,
       "name": 49,
       "iban": 0,
-      "email": 5,
+      "email": 8,
       "phone": 15,
       "postcode": 5,
       "address": 4
     },
-    "total": 95
+    "total": 98
   },
   "matches": [
     {
@@ -518,6 +518,13 @@
       "endOffset": 4396
     },
     {
+      "placeholder": "[EMAIL-004]",
+      "original": "k.bakker@testmail.example",
+      "type": "email",
+      "startOffset": 4406,
+      "endOffset": 4431
+    },
+    {
       "placeholder": "[NAME-020]",
       "original": "L. van Rijn",
       "type": "name",
@@ -544,6 +551,13 @@
       "type": "phone",
       "startOffset": 4502,
       "endOffset": 4516
+    },
+    {
+      "placeholder": "[EMAIL-005]",
+      "original": "l.vanrijn@testmail.example",
+      "type": "email",
+      "startOffset": 4526,
+      "endOffset": 4552
     },
     {
       "placeholder": "[NAME-021]",
@@ -574,6 +588,13 @@
       "endOffset": 4641
     },
     {
+      "placeholder": "[EMAIL-006]",
+      "original": "o.celik@testmail.example",
+      "type": "email",
+      "startOffset": 4651,
+      "endOffset": 4675
+    },
+    {
       "placeholder": "[NAME-022]",
       "original": "Zoë d'Angelo",
       "type": "name",
@@ -602,7 +623,7 @@
       "endOffset": 4766
     },
     {
-      "placeholder": "[EMAIL-004]",
+      "placeholder": "[EMAIL-007]",
       "original": "zoe.dangelo@testmail.example",
       "type": "email",
       "startOffset": 4776,
@@ -630,7 +651,7 @@
       "endOffset": 4872
     },
     {
-      "placeholder": "[EMAIL-005]",
+      "placeholder": "[EMAIL-008]",
       "original": "zoe.dangelo@testmail.example",
       "type": "email",
       "startOffset": 4882,
@@ -680,5 +701,5 @@
     }
   ],
   "missedNames": [],
-  "filteredText": "Cliëntdossier – testdocument anonimisatie (dummy data)Datum opmaak: [DATE-001]Organisatie: Stichting [NAME-001] (test)Locatie: De Lijsterhof, afdeling 2B\nIn dit document staan testgegevens die uitsluitend bedoeld zijn om het anonimiseren te testen. De cliënt is geregistreerd onder de naam mevrouw [NAME-002], [DATE-002], met een test-BSN [BSN-001]. De contactpersoon is haar zoon, de heer [NAME-003], telefoonnummer [PHONE-001] en e-mailadres [EMAIL-001]. Als tweede contactpersoon staat vermeld: \"[NAME-004]\" (mantelzorger), bereikbaar via [PHONE-002] en via [EMAIL-002].\nHet bezoekadres van de cliënt staat genoteerd als: [ADDRESS-001], [POSTCODE-001] Amsterdam. Het factuuradres staat apart vermeld als: t.a.v. [NAME-005], Postbus 203, [POSTCODE-002] Amsterdam. In het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-002], [POSTCODE-003] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-003].\nIn het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-003], [POSTCODE-004] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-004].\nTijdens het intakegesprek was wijkverpleegkundige drs. [NAME-006] aanwezig, samen met verzorgende IG [NAME-007]. In het verslag is opgenomen dat [NAME-006] de medicatielijst heeft doorgenomen en dat [NAME-007] de thuissituatie heeft besproken. De huisarts die in het systeem staat is \"Dr. [NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon [PHONE-003]. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-004], met contactpersoon \"[NAME-009]\".\n[NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon [PHONE-005]. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-006], met contactpersoon \"[NAME-009]\".\nIn de dagelijkse rapportage van [DATE-005] is geschreven dat [NAME-002] onrustig was in de ochtend en vroeg naar \"[NAME-010]\". Later op de dag werd vermeld dat \"Mevr. de [NAME-002]\" meer ontspannen was na bezoek van [NAME-003]. In een korte notitie staat ook: \"mw [NAME-011] vroeg naar haar zus: [NAME-012].\" In een andere regel staat de naam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nnaam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nEr is een medisch meetmoment geregistreerd met als identificatie: cliëntnummer CL-948271, en een tweede registratienummer: Dossier-ID 2026/02/07-XY. In het systeem staat ook een personeelsverwijzing naar medewerker \"[NAME-013]\", met telefoon [PHONE-007]. In een bijlage staat een afspraakbevestiging met de naam \"[NAME-014]\" als fysiotherapeut, praktijkadres: [ADDRESS-004], [POSTCODE-005] Amsterdam, e-mail: [EMAIL-003].\nOnderstaande passage bevat expres lastige tekstopmaak zoals afbrekingen en regeleinden, zodat je kunt testen of namen alsnog blijven staan door PDF/OCR-achtige ruis.De cliënt is gezien door Mevr. An-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-015] heeft toe-lichting gegeven over het plan.\nAn-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-015] heeft toe-lichting gegeven over het plan.\nIn het zorgplan staat dat de cliënt hulp nodig heeft bij ADL en dat de medicatie wordt toegediend volgens schema. In de opmerkingen is genoteerd dat \"[NAME-006]\" heeft gebeld met \"[NAME-009]\" van de apotheek over een herhaalrecept. Verder staat in de vrije tekst: \"Graag terugkoppelen aan [NAME-004] (mantelzorger) na het weekend.\"\nEr is ook een losse regel opgenomen met alleen hoofdletters om te testen op herkenning van namen in caps: \"CONTACT: [NAME-003]\". Verder staat er een variant met een tussenvoegsel en meerdere spaties: \"[NAME-016]\" en een variant met een koppelteken: \"[NAME-017]\". In een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-018] | [PHONE-008]\".\nIn een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-018] | [PHONE-009]\".\nVoor testdoeleinden staan hieronder extra identifiers die je tool zou moeten weghalen, zoals geboortedata, telefoonnummers, e-mails en test-BSN's (niet-elfproef).De heer [NAME-019], [DATE-006], test-BSN [BSN-002], telefoon [PHONE-010], e-mail: k.bakker@testmail.example.Mevrouw [NAME-020], geboren [DATE-007], test-BSN [BSN-003], telefoon [PHONE-011], e-mail: l.vanrijn@testmail.example.De heer \"[NAME-021]\", geboortedatum [DATE-008], test-BSN [BSN-004], telefoon [PHONE-012], e-mail: o.celik@testmail.example.Mevrouw \"[NAME-022]\", geboortedatum [DATE-009], test-BSN [BSN-005], telefoon [PHONE-013], e-mail: [EMAIL-004].\ngeboortedatum [DATE-010], test-BSN [BSN-006], telefoon [PHONE-014], e-mail: [EMAIL-005].\nTot slot staat er een korte passage met alleen initialen en achternaam, omdat die vaak gemist wordt door naïeve filters: \"Overleg gehad met [NAME-023] en [NAME-024] over vervolgafspraak.\" Ook staat er een passage met een naam tussen aanhalingstekens: \"Cliënt noemde '[NAME-025]' en '[NAME-026]' als vertrouwde gezichten.\" In de bijlage staat één regel met \"BSN: [BSN-007]\" en één regel met \"[PHONE-015]\", waarbij het streepje expres anders is dan normaal."
+  "filteredText": "Cliëntdossier – testdocument anonimisatie (dummy data)Datum opmaak: [DATE-001]Organisatie: Stichting [NAME-001] (test)Locatie: De Lijsterhof, afdeling 2B\nIn dit document staan testgegevens die uitsluitend bedoeld zijn om het anonimiseren te testen. De cliënt is geregistreerd onder de naam mevrouw [NAME-002], [DATE-002], met een test-BSN [BSN-001]. De contactpersoon is haar zoon, de heer [NAME-003], telefoonnummer [PHONE-001] en e-mailadres [EMAIL-001]. Als tweede contactpersoon staat vermeld: \"[NAME-004]\" (mantelzorger), bereikbaar via [PHONE-002] en via [EMAIL-002].\nHet bezoekadres van de cliënt staat genoteerd als: [ADDRESS-001], [POSTCODE-001] Amsterdam. Het factuuradres staat apart vermeld als: t.a.v. [NAME-005], Postbus 203, [POSTCODE-002] Amsterdam. In het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-002], [POSTCODE-003] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-003].\nIn het ECD is daarnaast een oud adres terug te vinden: Van [ADDRESS-003], [POSTCODE-004] Amsterdam, met een notitie dat dit adres niet meer actueel is sinds [DATE-004].\nTijdens het intakegesprek was wijkverpleegkundige drs. [NAME-006] aanwezig, samen met verzorgende IG [NAME-007]. In het verslag is opgenomen dat [NAME-006] de medicatielijst heeft doorgenomen en dat [NAME-007] de thuissituatie heeft besproken. De huisarts die in het systeem staat is \"Dr. [NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon [PHONE-003]. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-004], met contactpersoon \"[NAME-009]\".\n[NAME-008]\", praktijk \"Huisartsenpraktijk De Brug\", telefoon [PHONE-005]. Als apotheek staat geregistreerd: Apotheek 't Centrum, tel. [PHONE-006], met contactpersoon \"[NAME-009]\".\nIn de dagelijkse rapportage van [DATE-005] is geschreven dat [NAME-002] onrustig was in de ochtend en vroeg naar \"[NAME-010]\". Later op de dag werd vermeld dat \"Mevr. de [NAME-002]\" meer ontspannen was na bezoek van [NAME-003]. In een korte notitie staat ook: \"mw [NAME-011] vroeg naar haar zus: [NAME-012].\" In een andere regel staat de naam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nnaam in omgekeerde volgorde: \"De [NAME-002], [NAME-002]\" en in een overdrachtsregel staat alleen: \"[NAME-005]\".\nEr is een medisch meetmoment geregistreerd met als identificatie: cliëntnummer CL-948271, en een tweede registratienummer: Dossier-ID 2026/02/07-XY. In het systeem staat ook een personeelsverwijzing naar medewerker \"[NAME-013]\", met telefoon [PHONE-007]. In een bijlage staat een afspraakbevestiging met de naam \"[NAME-014]\" als fysiotherapeut, praktijkadres: [ADDRESS-004], [POSTCODE-005] Amsterdam, e-mail: [EMAIL-003].\nOnderstaande passage bevat expres lastige tekstopmaak zoals afbrekingen en regeleinden, zodat je kunt testen of namen alsnog blijven staan door PDF/OCR-achtige ruis.De cliënt is gezien door Mevr. An-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-015] heeft toe-lichting gegeven over het plan.\nAn-na de [NAME-002] en haar contactpers-oon [NAME-003]. De zorgme-dewerker [NAME-015] heeft toe-lichting gegeven over het plan.\nIn het zorgplan staat dat de cliënt hulp nodig heeft bij ADL en dat de medicatie wordt toegediend volgens schema. In de opmerkingen is genoteerd dat \"[NAME-006]\" heeft gebeld met \"[NAME-009]\" van de apotheek over een herhaalrecept. Verder staat in de vrije tekst: \"Graag terugkoppelen aan [NAME-004] (mantelzorger) na het weekend.\"\nEr is ook een losse regel opgenomen met alleen hoofdletters om te testen op herkenning van namen in caps: \"CONTACT: [NAME-003]\". Verder staat er een variant met een tussenvoegsel en meerdere spaties: \"[NAME-016]\" en een variant met een koppelteken: \"[NAME-017]\". In een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-018] | [PHONE-008]\".\nIn een interne notitie staat een e-mailhandtekening met naam en mobiele nummer: \"Met vriendelijke groet, [NAME-018] | [PHONE-009]\".\nVoor testdoeleinden staan hieronder extra identifiers die je tool zou moeten weghalen, zoals geboortedata, telefoonnummers, e-mails en test-BSN's (niet-elfproef).De heer [NAME-019], [DATE-006], test-BSN [BSN-002], telefoon [PHONE-010], e-mail: [EMAIL-004].Mevrouw [NAME-020], geboren [DATE-007], test-BSN [BSN-003], telefoon [PHONE-011], e-mail: [EMAIL-005].De heer \"[NAME-021]\", geboortedatum [DATE-008], test-BSN [BSN-004], telefoon [PHONE-012], e-mail: [EMAIL-006].Mevrouw \"[NAME-022]\", geboortedatum [DATE-009], test-BSN [BSN-005], telefoon [PHONE-013], e-mail: [EMAIL-007].\ngeboortedatum [DATE-010], test-BSN [BSN-006], telefoon [PHONE-014], e-mail: [EMAIL-008].\nTot slot staat er een korte passage met alleen initialen en achternaam, omdat die vaak gemist wordt door naïeve filters: \"Overleg gehad met [NAME-023] en [NAME-024] over vervolgafspraak.\" Ook staat er een passage met een naam tussen aanhalingstekens: \"Cliënt noemde '[NAME-025]' en '[NAME-026]' als vertrouwde gezichten.\" In de bijlage staat één regel met \"BSN: [BSN-007]\" en één regel met \"[PHONE-015]\", waarbij het streepje expres anders is dan normaal."
 }
