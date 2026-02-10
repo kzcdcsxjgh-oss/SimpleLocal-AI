@@ -96,6 +96,28 @@ export interface PrivacyFilterResult {
   error?: string;
 }
 
+export interface ExcelCell {
+  row: number;
+  col: number;
+  header: string;
+  originalValue: string;
+  filteredValue: string;
+  matches: PrivacyMatch[];
+}
+
+export interface ExcelFilterResult {
+  success: boolean;
+  fileName?: string;
+  headers?: string[];
+  rows?: string[][];
+  filteredRows?: string[][];
+  cells?: ExcelCell[];
+  stats?: PrivacyStats;
+  totalRows?: number;
+  totalCols?: number;
+  error?: string;
+}
+
 // Expose protected methods to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   // === AI Status ===
@@ -144,6 +166,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   privacySetSettings: (settings: PrivacyFilterSettings) =>
     ipcRenderer.invoke('privacy:setSettings', settings),
   privacyOpenFile: () => ipcRenderer.invoke('privacy:openFile'),
+
+  // === Excel Privacy Filter ===
+  privacyFilterExcel: (filePath: string) => ipcRenderer.invoke('privacy:filterExcel', filePath),
+  privacyExportExcel: (headers: string[], filteredRows: string[][], originalFileName: string) =>
+    ipcRenderer.invoke('privacy:exportExcel', headers, filteredRows, originalFileName),
+  privacyIsExcelFile: (filePath: string) => ipcRenderer.invoke('privacy:isExcelFile', filePath),
 
   // === Event Listeners ===
   onAppReady: (callback: (data: { ready: boolean }) => void) => {
@@ -219,6 +247,11 @@ export interface ElectronAPI {
   privacyGetSettings: () => Promise<PrivacyFilterSettings>;
   privacySetSettings: (settings: PrivacyFilterSettings) => Promise<{ success: boolean }>;
   privacyOpenFile: () => Promise<{ canceled: boolean; filePaths: string[] }>;
+
+  // Excel Privacy Filter
+  privacyFilterExcel: (filePath: string) => Promise<ExcelFilterResult>;
+  privacyExportExcel: (headers: string[], filteredRows: string[][], originalFileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+  privacyIsExcelFile: (filePath: string) => Promise<boolean>;
 
   // Events
   onAppReady: (callback: (data: { ready: boolean }) => void) => () => void;

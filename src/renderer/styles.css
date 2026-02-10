@@ -1710,3 +1710,158 @@ body {
   gap: var(--spacing-md);
   color: var(--gray-500);
 }
+
+/* ==========================================
+   Excel Table View
+   ========================================== */
+
+/* File item badge (XLS indicator) */
+.privacy-file-item__badge {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #16a34a;
+  color: var(--white);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* Summary bar above Excel table */
+.excel-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  font-size: var(--font-size-sm);
+  color: var(--gray-600);
+}
+
+.excel-summary__item {
+  font-weight: 500;
+}
+
+.excel-summary__item--highlight {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.excel-summary__sep {
+  color: var(--gray-300);
+}
+
+/* Table wrapper with scrolling */
+.excel-table-wrapper {
+  flex: 1;
+  overflow: auto;
+  padding: var(--spacing-md);
+}
+
+/* Table styling */
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  min-width: max-content;
+}
+
+.excel-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.excel-table th,
+.excel-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid var(--gray-200);
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.excel-table__header {
+  background: var(--gray-100);
+  font-weight: 600;
+  color: var(--gray-700);
+  font-size: 13px;
+  text-transform: none;
+}
+
+.excel-table__row-num {
+  background: var(--gray-50);
+  color: var(--gray-400);
+  font-size: 12px;
+  text-align: center;
+  width: 40px;
+  min-width: 40px;
+  font-weight: 500;
+}
+
+.excel-table__cell {
+  background: var(--white);
+  color: var(--gray-800);
+}
+
+.excel-table__cell--changed {
+  background: #fefce8;
+  border-color: #fde68a;
+}
+
+.excel-table tbody tr:hover td {
+  background: var(--gray-50);
+}
+
+.excel-table tbody tr:hover .excel-table__cell--changed {
+  background: #fef9c3;
+}
+
+/* Comparison mode in cells */
+.excel-table__cell-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.excel-table__cell-original {
+  color: var(--error);
+  text-decoration: line-through;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.excel-table__cell-filtered {
+  color: var(--success);
+  font-weight: 500;
+}
+
+/* Format tags on empty state */
+.privacy-empty-state__formats-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.privacy-empty-state__format-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.privacy-empty-state__format-tag--new {
+  background: var(--success-light);
+  color: var(--success);
+  font-weight: 600;
+}

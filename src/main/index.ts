@@ -5,6 +5,7 @@ import { Core, LLMConfig } from '../core';
 import type { Source } from '../core';
 import { PrivacyFilter } from '../core/privacy/privacy-filter';
 import { DocumentProcessor } from '../core/document-processor';
+import { ExcelProcessor } from '../core/excel-processor';
 import type { PrivacyFilterConfig, PrivacyDataType } from '../core/privacy/types';
 import { ALL_PRIVACY_TYPES } from '../core/privacy/types';
 
@@ -405,10 +406,57 @@ function setupIpcHandlers() {
     return dialog.showOpenDialog(mainWindow, {
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Documenten', extensions: ['pdf', 'docx', 'txt', 'md'] },
+        { name: 'Documenten', extensions: ['pdf', 'docx', 'txt', 'md', 'xlsx', 'xls'] },
+        { name: 'Excel-bestanden', extensions: ['xlsx', 'xls'] },
         { name: 'Alle bestanden', extensions: ['*'] },
       ],
     });
+  });
+
+  // === Excel Privacy Filter ===
+  ipcMain.handle('privacy:filterExcel', async (_event, filePath: string) => {
+    try {
+      safeSend('privacy:progress', { filePath, status: 'extracting' });
+      const result = ExcelProcessor.filterExcel(filePath, privacyFilter);
+      safeSend('privacy:progress', { filePath, status: 'done' });
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      safeSend('privacy:progress', { filePath, status: 'error', error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('privacy:exportExcel', async (_event, headers: string[], filteredRows: string[][], originalFileName: string) => {
+    if (!mainWindow) return { success: false, error: 'Geen venster' };
+
+    const ext = path.extname(originalFileName);
+    const base = path.basename(originalFileName, ext);
+    const suggestedName = `${base}_gefilterd.xlsx`;
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: suggestedName,
+      filters: [
+        { name: 'Excel-bestand', extensions: ['xlsx'] },
+        { name: 'Alle bestanden', extensions: ['*'] },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, canceled: true };
+    }
+
+    try {
+      ExcelProcessor.writeFilteredExcel(headers, filteredRows, result.filePath);
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  ipcMain.handle('privacy:isExcelFile', async (_event, filePath: string) => {
+    return ExcelProcessor.isExcelFile(filePath);
   });
 
   // === Legacy Chat Session Handlers (backwards compatibility) ===
