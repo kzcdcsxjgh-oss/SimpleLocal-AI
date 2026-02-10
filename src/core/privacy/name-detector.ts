@@ -144,8 +144,12 @@ export class NameDetector {
     const afterRound1 = this.deduplicateNames([...allSoFar, ...contextual]);
     const aggressive = this.detectAggressiveSecondPass(text, afterRound1);
 
+    // Pass 10: Aaneengeschreven prefix+achternaam varianten (bijv. "Devries" voor "de Vries")
+    const afterRound2 = this.deduplicateNames([...afterRound1, ...aggressive]);
+    const concatenated = this.detectConcatenatedNames(text, afterRound2);
+
     // Finale deduplicatie
-    return this.deduplicateNames([...afterRound1, ...aggressive]);
+    return this.deduplicateNames([...afterRound2, ...concatenated]);
   }
 
   /**
@@ -299,8 +303,12 @@ export class NameDetector {
   private tryExtendToFullName(firstName: string, remaining: string): string | null {
     // Check voor tussenvoegsel + achternaam
     for (const prefix of this.prefixPatterns) {
+      const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Speciale gevallen: d' en 't plakken vast aan achternaam (d'Angelo, 't Hof)
+      const needsSpace = prefix.endsWith("'");
+      const sep = needsSpace ? '' : '\\s+';
       const prefixPattern = new RegExp(
-        `^\\s+${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\\s.,;:!?()"']|$)`,
+        `^\\s+${escaped}${sep}([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\\s.,;:!?()"']|$)`,
         'i'
       );
       const match = prefixPattern.exec(remaining);
@@ -311,16 +319,20 @@ export class NameDetector {
 
     // Check voor directe achternaam (hoofdletter), gevolgd door woordgrens
     // Ondersteun apostroffen in achternamen: d'Angelo, O'Brien, etc.
-    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ']+)(?=[\s.,;:!?()"']|$)/.exec(remaining);
+    const directMatch = /^\s+([A-ZÀ-ÿ][a-zà-ÿ']+)(?=[\s.,;:!?()"'\-]|$)/.exec(remaining);
     if (directMatch) {
       const possibleLastName = directMatch[1];
       if ((this.lastNameSet.has(possibleLastName) || this.isLikelySurname(possibleLastName)) && !isCommonWord(possibleLastName)) {
+        // Check voor samengestelde achternaam met koppelteken: bijv. "Koster-van Dijk"
+        const afterDirect = remaining.slice(directMatch[0].length);
+        const compoundHyphen = this.tryExtendCompoundSurname(afterDirect);
+        if (compoundHyphen) {
+          return `${firstName}${directMatch[0]}${compoundHyphen}`;
+        }
         return `${firstName}${directMatch[0]}`;
       }
 
       // Check voor samengestelde achternaam: bijv. "Klein Wassink"
-      // Als het eerste woord een common word is maar in de achternaamlijst staat,
-      // kijk of er nog een achternaam volgt
       if (isCommonWord(possibleLastName) && this.lastNameSet.has(possibleLastName)) {
         const afterCompound = remaining.slice(directMatch[0].length);
         const secondPart = /^\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/.exec(afterCompound);
@@ -330,6 +342,29 @@ export class NameDetector {
       }
     }
 
+    return null;
+  }
+
+  /**
+   * Probeer een achternaam uit te breiden na een koppelteken met tussenvoegsel
+   * Bijv. "-van Dijk", "-de Groot"
+   */
+  private tryExtendCompoundSurname(remaining: string): string | null {
+    // Patroon: -tussenvoegsel achternaam (bijv. "-van Dijk")
+    for (const prefix of this.prefixPatterns) {
+      const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pat = new RegExp(
+        `^-${escaped}\\s+([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\\s.,;:!?()"']|$)`,
+        'i'
+      );
+      const m = pat.exec(remaining);
+      if (m) return m[0];
+    }
+    // Patroon: -Achternaam (bijv. "-Bakker")
+    const directHyphen = /^-([A-ZÀ-ÿ][a-zà-ÿ]+)(?=[\s.,;:!?()"']|$)/.exec(remaining);
+    if (directHyphen && (this.lastNameSet.has(directHyphen[1]) || this.isLikelySurname(directHyphen[1]))) {
+      return directHyphen[0];
+    }
     return null;
   }
 
@@ -443,8 +478,9 @@ export class NameDetector {
   private detectAllCapsNames(text: string): DetectedName[] {
     const results: DetectedName[] = [];
 
-    // Zoek 2+ opeenvolgende ALL-CAPS woorden (min 2 letters elk)
-    const pattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-Ý]{2,}(?:-[A-ZÀ-Ý]{2,})?)(?:\s+(?:VAN|DE|DEN|DER|HET|TE|TEN|TER)\s+)?(\s+[A-ZÀ-Ý]{2,}(?:-[A-ZÀ-Ý]{2,})?)(?=[\s.,;:!?()"']|$)/gm;
+    // Zoek 2+ opeenvolgende ALL-CAPS woorden, inclusief tussenvoegsels
+    // Patroon: VOORNAAM (optioneel TUSSENVOEGSEL(S)) ACHTERNAAM
+    const pattern = /(?:^|(?<=[\s.,;:!?()"']))([A-ZÀ-Ý]{2,}(?:-[A-ZÀ-Ý]{2,})?)(\s+(?:VAN|DE|DEN|DER|HET|TE|TEN|TER))*\s+([A-ZÀ-Ý]{2,}(?:-[A-ZÀ-Ý]{2,})?)(?=[\s.,;:!?()"']|$)/gm;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
@@ -526,6 +562,7 @@ export class NameDetector {
    */
   private extractNameComponents(detections: DetectedName[]): Set<string> {
     const components = new Set<string>();
+    const prefixWords = new Set(['van', 'de', 'den', 'der', 'het', "'t", "d'", 'te', 'ten', 'ter', 'el', 'al', 'in', 'op']);
 
     for (const det of detections) {
       const parts = det.original.split(/\s+/);
@@ -541,6 +578,24 @@ export class NameDetector {
       const lastName = parts[parts.length - 1];
       if (lastName.length >= 2 && /^[A-ZÀ-ÿ]/.test(lastName) && !isCommonWord(lastName)) {
         components.add(lastName);
+      }
+
+      // Tussenvoegsel + achternaam als geheel (bijv. "Van der Meer" uit "M. van der Meer")
+      // Zoek het eerste tussenvoegsel-woord en neem alles vanaf daar
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (prefixWords.has(parts[i].toLowerCase())) {
+          const surnameWithPrefix = parts.slice(i).join(' ');
+          if (surnameWithPrefix.length >= 4) {
+            // Voeg zowel originele als Title Case variant toe
+            components.add(surnameWithPrefix);
+            const titleCased = parts[i].charAt(0).toUpperCase() + parts[i].slice(1) +
+              ' ' + parts.slice(i + 1).join(' ');
+            if (titleCased !== surnameWithPrefix) {
+              components.add(titleCased);
+            }
+          }
+          break;
+        }
       }
     }
 
@@ -708,6 +763,50 @@ export class NameDetector {
   }
 
   /**
+   * Pass 10: Detecteer aaneengeschreven prefix+achternaam varianten
+   * Bijv. "Devries" (= de Vries), "Vandenberg" (= van den Berg)
+   * Alleen als de losse variant al als naam bevestigd is.
+   */
+  private detectConcatenatedNames(text: string, existingDetections: DetectedName[]): DetectedName[] {
+    const results: DetectedName[] = [];
+    const prefixes = ['de', 'den', 'der', 'van', 'ten', 'ter'];
+
+    // Verzamel bevestigde achternamen met tussenvoegsel
+    const confirmedSurnames = new Set<string>();
+    for (const det of existingDetections) {
+      const parts = det.original.split(/\s+/);
+      if (parts.length >= 2) {
+        // Zoek achternaam-deel na tussenvoegsel
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (prefixes.includes(parts[i].toLowerCase())) {
+            const surname = parts.slice(i).map(p => p.toLowerCase()).join('');
+            confirmedSurnames.add(surname);
+          }
+        }
+      }
+    }
+
+    if (confirmedSurnames.size === 0) return results;
+
+    // Zoek woorden die beginnen met een prefix en een bekende achternaam bevatten
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-Za-zÀ-ÿ]{5,})(?=[\s.,;:!?()"''"„«»]|$)/gm;
+    let match;
+
+    while ((match = wordPattern.exec(text)) !== null) {
+      const word = match[1];
+      const pos = match.index;
+      if (this.isPositionCovered(pos, pos + word.length, existingDetections, results)) continue;
+
+      const lower = word.toLowerCase();
+      if (confirmedSurnames.has(lower)) {
+        results.push({ original: word, type: 'name', start: pos, end: pos + word.length });
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Check of een positie al gedekt is door een bestaande detectie
    */
   private isPositionCovered(
@@ -746,7 +845,7 @@ export class NameDetector {
       'daal', 'laan', 'poort', 'kerk', 'hof', 'brug', 'sloot',
       'woud', 'aard',
       // Beroep/eigenschap
-      'ler', 'ner', 'ker', 'ger',
+      'ler', 'ner', 'ker', 'ger', 'ster', 'ter',
       // Patroniem
       'ens', 'ink', 'ling',
     ];

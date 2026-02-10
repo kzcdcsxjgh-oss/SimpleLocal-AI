@@ -324,7 +324,8 @@ export class PrivacyFilter {
         digits = match[2] + match[3] + match[4];
       }
 
-      if (this.isValidBSN(digits)) {
+      // Elfproef-validatie, OF context-gebaseerd: "BSN" keyword in de buurt
+      if (this.isValidBSN(digits) || this.hasBSNContext(text, match.index)) {
         results.push({
           original: match[0],
           type: 'bsn',
@@ -335,6 +336,16 @@ export class PrivacyFilter {
     }
 
     return results;
+  }
+
+  /**
+   * Check of er een BSN-gerelateerd keyword in de buurt staat (binnen 40 tekens)
+   */
+  private hasBSNContext(text: string, position: number): boolean {
+    const windowStart = Math.max(0, position - 40);
+    const windowEnd = Math.min(text.length, position + 20);
+    const context = text.slice(windowStart, windowEnd).toLowerCase();
+    return /\bbsn\b|burgerservicenummer/.test(context);
   }
 
   /**
@@ -429,10 +440,18 @@ export class PrivacyFilter {
    */
   private detectEmail(text: string): DetectedItem[] {
     const results: DetectedItem[] = [];
-    const pattern = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
+    // TLD beperkt tot 2-10 tekens (voorkomt dat .Mevrouw of .De als TLD wordt gezien)
+    const pattern = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}\b/g;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
+      // Extra validatie: het domein mag niet eindigen op een woord met hoofdletter
+      // (bijv. "example.Mevrouw" is geen geldig domein)
+      const domainPart = match[0].split('@')[1];
+      const lastDotIdx = domainPart.lastIndexOf('.');
+      const tld = domainPart.slice(lastDotIdx + 1);
+      if (/^[A-Z]/.test(tld)) continue; // TLD's zijn lowercase
+
       results.push({
         original: match[0],
         type: 'email',
