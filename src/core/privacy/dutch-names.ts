@@ -150,6 +150,11 @@ export const NAME_INDICATORS: string[] = [
   'Geachte', 'Beste',
   'geb.', 'geboren',
 
+  // Begroetingen (informeel en formeel)
+  'Hoi', 'hoi', 'Dag', 'dag', 'Hey', 'hey', 'Hallo', 'hallo',
+  'Hi', 'hi', 'Lieve', 'lieve', 'Groetjes', 'groetjes',
+  'Groeten', 'groeten', 'Liefs', 'liefs',
+
   // Juridisch / administratief
   'namens', 'ondertekend door', 'ondertekend',
   't.a.v.', 'ter attentie van', 'T.a.v.',

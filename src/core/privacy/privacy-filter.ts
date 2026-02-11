@@ -279,11 +279,18 @@ export class PrivacyFilter {
   }
 
   /**
+   * Geef de huidige configuratie terug
+   */
+  getConfig(): PrivacyFilterConfig {
+    return { ...this.config };
+  }
+
+  /**
    * Update configuratie
    */
   updateConfig(config: Partial<PrivacyFilterConfig>): void {
     if (config.enabledTypes) this.config.enabledTypes = config.enabledTypes;
-    if (config.customNames) {
+    if (config.customNames !== undefined) {
       this.config.customNames = config.customNames;
       this.nameDetector = new NameDetector(this.config.customNames);
     }
