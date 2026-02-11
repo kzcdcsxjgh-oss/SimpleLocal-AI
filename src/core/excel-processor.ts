@@ -37,7 +37,13 @@ export interface ExcelFilterResult {
 
 export class ExcelProcessor {
   /**
-   * Lees een Excel-bestand en anonimiseer alle cellen
+   * Lees een Excel-bestand en anonimiseer alle cellen.
+   *
+   * Twee-pass aanpak voor betere naamdetectie:
+   * 1. Pre-scan: combineer alle celteksten, draai de filter op de volledige tekst
+   *    om namen te ontdekken (entity discovery)
+   * 2. Per-cel filtering: filter elke cel individueel, met de ontdekte namen
+   *    als customNames zodat ze ook in korte cellen herkend worden
    */
   static filterExcel(filePath: string, privacyFilter: PrivacyFilter): ExcelFilterResult {
     try {
@@ -70,6 +76,49 @@ export class ExcelProcessor {
       const headers = rawData[0].map(h => String(h ?? ''));
       const dataRows = rawData.slice(1);
 
+      // === Pass 1: Pre-scan voor entity discovery ===
+      // Combineer alle celteksten tot één document zodat de naamdetector
+      // entity propagation en context-detectie kan toepassen
+      const allCellTexts: string[] = [];
+      for (const row of dataRows) {
+        for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+          const cellValue = String(row[colIdx] ?? '').trim();
+          if (cellValue) {
+            allCellTexts.push(cellValue);
+          }
+        }
+      }
+
+      const combinedText = allCellTexts.join('\n');
+      const preScanResult = privacyFilter.filter(combinedText);
+
+      // Extraheer alle unieke naam-strings die gevonden zijn
+      const discoveredNames: string[] = [];
+      for (const match of preScanResult.matches) {
+        if (match.type === 'name') {
+          // Voeg de volledige naam toe
+          discoveredNames.push(match.original);
+          // Splits ook in componenten (voornaam, achternaam apart)
+          const parts = match.original.split(/\s+/);
+          for (const part of parts) {
+            // Skip tussenvoegsels en te korte woorden
+            if (part.length >= 2 && /^[A-ZÀ-ÿ]/.test(part) &&
+                !/^(?:van|de|den|der|het|te|ten|ter|in|op|aan|bij|uit|voor|over|onder|tot)$/i.test(part)) {
+              discoveredNames.push(part);
+            }
+          }
+        }
+      }
+
+      // Verrijk de filter tijdelijk met de ontdekte namen als customNames
+      const originalConfig = privacyFilter.getConfig();
+      const originalCustomNames = originalConfig.customNames ?? [];
+      const enrichedCustomNames = [...new Set([...originalCustomNames, ...discoveredNames])];
+
+      // Update de filter met de verrijkte namenlijst
+      privacyFilter.updateConfig({ customNames: enrichedCustomNames });
+
+      // === Pass 2: Per-cel filtering met verrijkte namen ===
       const rows: string[][] = [];
       const filteredRows: string[][] = [];
       const allCells: ExcelCell[] = [];
@@ -122,6 +171,9 @@ export class ExcelProcessor {
         rows.push(originalRow);
         filteredRows.push(filteredRow);
       }
+
+      // Herstel de originele customNames
+      privacyFilter.updateConfig({ customNames: originalCustomNames });
 
       return {
         success: true,
