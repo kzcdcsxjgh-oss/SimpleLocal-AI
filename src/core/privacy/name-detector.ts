@@ -38,8 +38,9 @@ const COMMON_WORDS_LIST = [
   'maar', 'zijn', 'haar', 'hem', 'hun', 'zij', 'wij', 'hij', 'ons',
   'door', 'over', 'naar', 'meer', 'veel', 'goed', 'heel', 'alle',
   'den', 'berg', 'hal', 'groot', 'klein', 'kort', 'lang',
-  // Maanden die als naam verward kunnen worden
-  'mei',
+  // Maanden die als naam verward kunnen worden (FIX BUG 3)
+  'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+  'juli', 'augustus', 'september', 'oktober', 'november', 'december',
   // Veelvoorkomende woorden aan begin van zinnen
   'hoe', 'die', 'dus', 'hier', 'daar', 'toen', 'toch', 'waar',
 ];
@@ -192,7 +193,7 @@ export class NameDetector {
     // Gebruik flexibelere grenzen: ook na cijfers of begin van tekst
     // Ondersteun apostroffen BINNEN namen: d'Angelo, O'Brien (niet aan het eind)
     // Detecteer namen ook binnen aanhalingstekens: "Hicham", 'Elize'
-    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -399,7 +400,8 @@ export class NameDetector {
       // - Begint met hoofdletter
       // - Geen interpunctie behalve koppeltekens en punten (initialen)
       // - Volgt op timestamp OF staat aan begin document
-      if (!isAfterTimestamp && i > 1) continue;
+      // FIX BUG 5: Change i > 1 to i > 0 to allow names on lines 1+ (after first timestamp)
+      if (!isAfterTimestamp && i > 0) continue;
 
       // Korte regels met alleen naam-achtige woorden
       const words = line.split(/\s+/);
@@ -445,7 +447,8 @@ export class NameDetector {
 
     // Patroon: Achternaam, Voornaam (evt. met tussenvoegsel ervoor)
     // Ondersteun apostroffen in namen
-    const pattern = /(?:^|(?<=[\s(]))([A-ZÀ-ÿ][a-zà-ÿ']+),\s+([A-ZÀ-ÿ][a-zà-ÿ']+(?:-[A-ZÀ-ÿ][a-zà-ÿ']+)?)(?:\s+(?:van|de|den|der|het|'t|d'|te|ten|ter))*(?=[\s).,;:!?]|$)/gm;
+    // FIX BUG 1: Support initials like "Vries, J." or "Berg, J.P." by making lowercase optional
+    const pattern = /(?:^|(?<=[\s(]))([A-ZÀ-ÿ][a-zà-ÿ']*),\s+([A-ZÀ-ÿ][a-zà-ÿ'\.]*(?:-[A-ZÀ-ÿ][a-zà-ÿ'\.]+)?)(?:\s+(?:van|de|den|der|het|'t|d'|te|ten|ter))*(?=[\s).,;:!?]|$)/gm;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
@@ -622,7 +625,7 @@ export class NameDetector {
 
     // Ondersteun apostroffen BINNEN voornamen: Zoë, d'Angelo (niet aan het eind)
     // Ook binnen aanhalingstekens: 'Hicham', "Elize"
-    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -678,7 +681,7 @@ export class NameDetector {
     // Strategie A: Als een bekende voornaam gevonden is maar niet als volledige naam,
     // kijk of het volgende gekapitaliseerde woord een onbekende achternaam kan zijn
     // Ondersteun apostroffen BINNEN namen (niet aan het eind) en detectie binnen aanhalingstekens
-    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
+    const wordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let match;
 
     while ((match = wordPattern.exec(text)) !== null) {
@@ -737,7 +740,7 @@ export class NameDetector {
     // Strategie B: Losse bekende voornamen die in de buurt van al-gevonden namen staan
     // (zachter dan Pass 8 — hier hoeft geen werkwoord of voorzetsel bij)
     // Ondersteun apostroffen BINNEN namen (niet aan het eind) en detectie binnen aanhalingstekens
-    const nameWordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[a-zà-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
+    const nameWordPattern = /(?:^|(?<=[\s.,;:!?()"''"„«»]))([A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+(?:-[A-ZÀ-ÿ](?:[a-zà-ÿ]|'(?=[A-Za-zÀ-ÿ]))+)*)(?=[\s.,;:!?()"''"„«»]|$)/gm;
     let m2;
 
     while ((m2 = nameWordPattern.exec(text)) !== null) {
@@ -779,8 +782,14 @@ export class NameDetector {
         // Zoek achternaam-deel na tussenvoegsel
         for (let i = 0; i < parts.length - 1; i++) {
           if (prefixes.includes(parts[i].toLowerCase())) {
+            // FIX BUG 4: Add both concatenated form AND individual surname parts
             const surname = parts.slice(i).map(p => p.toLowerCase()).join('');
             confirmedSurnames.add(surname);
+            // Also add the surname part alone (e.g., "vries" from "de vries")
+            const surnamePart = parts.slice(i + 1).map(p => p.toLowerCase()).join('');
+            if (surnamePart.length >= 3) {
+              confirmedSurnames.add(surnamePart);
+            }
           }
         }
       }
