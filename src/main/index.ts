@@ -5,7 +5,7 @@ import { Core, LLMConfig } from '../core';
 import type { Source } from '../core';
 import { PrivacyFilter } from '../core/privacy/privacy-filter';
 import { DocumentProcessor } from '../core/document-processor';
-import { ExcelProcessor } from '../core/excel-processor';
+import { ExcelProcessor, sanitizeErrorMessage } from '../core/excel-processor';
 import type { PrivacyFilterConfig, PrivacyDataType } from '../core/privacy/types';
 import { ALL_PRIVACY_TYPES } from '../core/privacy/types';
 
@@ -203,7 +203,9 @@ function setupIpcHandlers() {
       safeSend('document:processing', { filePath, status: 'completed' });
       return { success: true, document };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       safeSend('document:processing', { filePath, status: 'error', error: errorMessage });
       return { success: false, error: errorMessage };
     }
@@ -224,7 +226,9 @@ function setupIpcHandlers() {
       await core.removeDocument(documentId);
       return { success: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       return { success: false, error: errorMessage };
     }
   });
@@ -308,7 +312,9 @@ function setupIpcHandlers() {
 
       return { success: true, sources };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       safeSend('chat:stream', { chunk: '', done: true, error: errorMessage });
       return { success: false, error: errorMessage };
     }
@@ -339,7 +345,9 @@ function setupIpcHandlers() {
         stats: result.stats,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       safeSend('privacy:progress', { filePath, status: 'error', error: errorMessage });
       return { success: false, error: errorMessage };
     }
@@ -369,7 +377,9 @@ function setupIpcHandlers() {
       fs.writeFileSync(result.filePath, filteredText, 'utf-8');
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       return { success: false, error: errorMessage };
     }
   });
@@ -421,7 +431,9 @@ function setupIpcHandlers() {
       safeSend('privacy:progress', { filePath, status: 'done' });
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       safeSend('privacy:progress', { filePath, status: 'error', error: errorMessage });
       return { success: false, error: errorMessage };
     }
@@ -448,9 +460,21 @@ function setupIpcHandlers() {
 
     try {
       ExcelProcessor.writeFilteredExcel(headers, filteredRows, result.filePath);
+
+      // Audit logging (metadata only, NO PII)
+      console.log('[PRIVACY-AUDIT]', {
+        timestamp: new Date().toISOString(),
+        fileName: originalFileName,
+        operation: 'export',
+        itemsFiltered: filteredRows.length,
+        filterStats: { total: filteredRows.length },
+      });
+
       return { success: true, filePath: result.filePath };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout';
       return { success: false, error: errorMessage };
     }
   });

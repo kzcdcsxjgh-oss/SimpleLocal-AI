@@ -94,6 +94,21 @@ export class SQLiteStorage implements IStorage {
         document_id UNINDEXED,
         tokenize='porter unicode61'
       );
+
+      -- Privacy Filter Audit Log (metadata only, NO PII)
+      CREATE TABLE IF NOT EXISTS privacy_audit_log (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_hash TEXT,
+        operation TEXT NOT NULL CHECK(operation IN ('filter', 'export')),
+        items_filtered INTEGER NOT NULL DEFAULT 0,
+        filter_stats TEXT NOT NULL,
+        user_action TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON privacy_audit_log(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_audit_file ON privacy_audit_log(file_name);
     `);
   }
 

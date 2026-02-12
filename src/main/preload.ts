@@ -100,7 +100,6 @@ export interface ExcelCell {
   row: number;
   col: number;
   header: string;
-  originalValue: string;
   filteredValue: string;
   matches: PrivacyMatch[];
 }
@@ -109,7 +108,6 @@ export interface ExcelFilterResult {
   success: boolean;
   fileName?: string;
   headers?: string[];
-  rows?: string[][];
   filteredRows?: string[][];
   cells?: ExcelCell[];
   stats?: PrivacyStats;
