@@ -32,7 +32,6 @@ interface FilteredExcelDocument {
   kind: 'excel';
   fileName: string;
   headers: string[];
-  rows: string[][];
   filteredRows: string[][];
   cells: ExcelCell[];
   stats: PrivacyStats;
@@ -44,7 +43,6 @@ interface ExcelCell {
   row: number;
   col: number;
   header: string;
-  originalValue: string;
   filteredValue: string;
   matches: PrivacyMatch[];
 }
@@ -89,6 +87,16 @@ const PrivacyFilterScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
+  // Memory cleanup on unmount for security
+  React.useEffect(() => {
+    return () => {
+      setResults([]);
+      setSelectedResult(null);
+      setError(null);
+      setExportSuccess(null);
+    };
+  }, []);
+
   const handleSelectFiles = useCallback(async () => {
     setError(null);
     setExportSuccess(null);
@@ -114,7 +122,6 @@ const PrivacyFilterScreen: React.FC = () => {
             kind: 'excel',
             fileName: excelResult.fileName || fileName,
             headers: excelResult.headers,
-            rows: excelResult.rows || [],
             filteredRows: excelResult.filteredRows || [],
             cells: excelResult.cells || [],
             stats: excelResult.stats || { counts: {} as Record<PrivacyDataType, number>, total: 0 },
@@ -489,6 +496,21 @@ const ExcelResultView: React.FC<{
 
   return (
     <>
+      {/* Security warning for comparison mode */}
+      {showOriginal && (
+        <div style={{
+          background: '#fff3cd',
+          border: '1px solid #ffc107',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          borderRadius: '4px',
+          color: '#856404',
+          fontSize: '14px'
+        }}>
+          ⚠️ Vergelijkingsmodus toont geredacteerde placeholders - originele data is permanent verwijderd voor uw veiligheid
+        </div>
+      )}
+
       {/* Samenvatting boven de tabel */}
       <div className="excel-summary">
         <span className="excel-summary__item">
@@ -523,7 +545,7 @@ const ExcelResultView: React.FC<{
                 <td className="excel-table__row-num">{rowIdx + 1}</td>
                 {filteredRow.map((cellValue, colIdx) => {
                   const isChanged = changedCells.has(`${rowIdx}-${colIdx}`);
-                  const originalValue = doc.rows[rowIdx]?.[colIdx] || '';
+                  const redactedValue = '[VERWIJDERD]';
 
                   return (
                     <td
@@ -532,7 +554,7 @@ const ExcelResultView: React.FC<{
                     >
                       {showOriginal && isChanged ? (
                         <div className="excel-table__cell-comparison">
-                          <span className="excel-table__cell-original">{originalValue}</span>
+                          <span className="excel-table__cell-original">{redactedValue}</span>
                           <span className="excel-table__cell-filtered">{cellValue}</span>
                         </div>
                       ) : (
@@ -559,9 +581,10 @@ const ExcelResultView: React.FC<{
                 <span className="privacy-match-item__type">
                   Rij {cell.row + 1} · {cell.header}
                 </span>
-                <span className="privacy-match-item__original">{cell.originalValue}</span>
-                <span className="privacy-match-item__arrow">&#8594;</span>
                 <span className="privacy-match-item__placeholder">{cell.filteredValue}</span>
+                <span className="privacy-match-item__metadata">
+                  ({cell.matches.length} item{cell.matches.length !== 1 ? 's' : ''} verwijderd)
+                </span>
               </div>
             ))}
           </div>

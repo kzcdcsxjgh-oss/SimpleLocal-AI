@@ -13,11 +13,35 @@ import type { PrivacyMatch, PrivacyStats, PrivacyDataType } from './privacy/type
 import { ALL_PRIVACY_TYPES } from './privacy/types';
 import { PrivacyFilter } from './privacy/privacy-filter';
 
+/**
+ * Sanitize error messages to prevent PII leakage
+ * Removes BSN numbers, IBAN, emails, phone numbers, and potential names
+ */
+export function sanitizeErrorMessage(message: string): string {
+  let sanitized = message;
+
+  // Remove 9-digit sequences (potential BSN)
+  sanitized = sanitized.replace(/\b\d{9}\b/g, '[GETAL]');
+
+  // Remove IBAN patterns
+  sanitized = sanitized.replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b/g, '[IBAN]');
+
+  // Remove emails
+  sanitized = sanitized.replace(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,10}\b/gi, '[EMAIL]');
+
+  // Remove phone numbers (Dutch format)
+  sanitized = sanitized.replace(/\b0\d[\d\s\-\.]{8,}\b/g, '[TELEFOON]');
+
+  // Remove capitalized words that might be names (2+ consecutive capital words)
+  sanitized = sanitized.replace(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g, '[NAAM]');
+
+  return sanitized;
+}
+
 export interface ExcelCell {
   row: number;
   col: number;
   header: string;
-  originalValue: string;
   filteredValue: string;
   matches: PrivacyMatch[];
 }
@@ -26,7 +50,6 @@ export interface ExcelFilterResult {
   success: boolean;
   fileName?: string;
   headers?: string[];
-  rows?: string[][];
   filteredRows?: string[][];
   cells?: ExcelCell[];
   stats?: PrivacyStats;
@@ -119,7 +142,6 @@ export class ExcelProcessor {
       privacyFilter.updateConfig({ customNames: enrichedCustomNames });
 
       // === Pass 2: Per-cel filtering met verrijkte namen ===
-      const rows: string[][] = [];
       const filteredRows: string[][] = [];
       const allCells: ExcelCell[] = [];
       const globalStats: PrivacyStats = {
@@ -132,12 +154,10 @@ export class ExcelProcessor {
 
       for (let rowIdx = 0; rowIdx < dataRows.length; rowIdx++) {
         const row = dataRows[rowIdx];
-        const originalRow: string[] = [];
         const filteredRow: string[] = [];
 
         for (let colIdx = 0; colIdx < headers.length; colIdx++) {
           const cellValue = String(row[colIdx] ?? '');
-          originalRow.push(cellValue);
 
           if (cellValue.trim() === '') {
             filteredRow.push('');
@@ -155,9 +175,15 @@ export class ExcelProcessor {
               row: rowIdx,
               col: colIdx,
               header: headers[colIdx] || `Kolom ${colIdx + 1}`,
-              originalValue: cellValue,
               filteredValue: result.filteredText,
-              matches: result.matches,
+              matches: result.matches.map(m => ({
+                placeholder: m.placeholder,
+                type: m.type,
+                // Security: Don't include m.original - use placeholder
+                original: '[VERWIJDERD]',
+                startOffset: 0,
+                endOffset: 0,
+              })),
             });
 
             // Tel statistieken op
@@ -168,18 +194,25 @@ export class ExcelProcessor {
           }
         }
 
-        rows.push(originalRow);
         filteredRows.push(filteredRow);
       }
 
       // Herstel de originele customNames
       privacyFilter.updateConfig({ customNames: originalCustomNames });
 
+      // Audit logging (metadata only, NO PII)
+      console.log('[PRIVACY-AUDIT]', {
+        timestamp: new Date().toISOString(),
+        fileName: path.basename(filePath),
+        operation: 'filter',
+        itemsFiltered: globalStats.total,
+        filterStats: globalStats,
+      });
+
       return {
         success: true,
         fileName: path.basename(filePath),
         headers,
-        rows,
         filteredRows,
         cells: allCells,
         stats: globalStats,
@@ -187,7 +220,9 @@ export class ExcelProcessor {
         totalCols: headers.length,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout bij verwerken Excel';
+      const errorMessage = error instanceof Error
+        ? sanitizeErrorMessage(error.message)
+        : 'Onbekende fout bij verwerken Excel';
       return { success: false, error: errorMessage };
     }
   }
